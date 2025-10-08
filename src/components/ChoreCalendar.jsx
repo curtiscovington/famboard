@@ -1,4 +1,5 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { getRecurrenceLabel } from '../utils/recurrence.js'
 import {
   addDays,
@@ -25,6 +26,27 @@ const VIEWS = [
 export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChore }) {
   const [activeView, setActiveView] = useState('week')
   const [focusDate, setFocusDate] = useState(() => startOfDay(new Date()))
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    if (!isFullscreen) return undefined
+
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsFullscreen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isFullscreen])
 
   const memberMap = useMemo(() => {
     const map = new Map()
@@ -84,16 +106,33 @@ export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChor
     return chunked
   }, [activeView, daysInRange])
 
-  return (
-    <div className="space-y-6">
-      <header className="space-y-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+  const calendarSections = (
+    <>
+      <header className="space-y-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between lg:items-center">
           <div className="space-y-1">
             <h2 className="font-display text-2xl text-slate-800 dark:text-white">Chore calendar</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {subjectLabel} · Normalized for future Google, Apple, or Outlook calendar syncs.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsFullscreen((current) => !current)}
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              isFullscreen
+                ? 'bg-slate-900 text-white shadow-lg focus:ring-slate-600 focus:ring-offset-slate-100 hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 dark:focus:ring-slate-600 dark:focus:ring-offset-slate-900'
+                : 'bg-famboard-primary text-white shadow-lg hover:-translate-y-0.5 hover:bg-famboard-dark focus:ring-famboard-accent focus:ring-offset-white dark:focus:ring-sky-400 dark:focus:ring-offset-slate-900'
+            }`}
+            aria-pressed={isFullscreen}
+            aria-label={isFullscreen ? 'Exit full screen calendar view' : 'Open chore calendar in full screen'}
+            title={isFullscreen ? 'Exit full screen calendar view' : 'Open chore calendar in full screen'}
+          >
+            <span aria-hidden="true">{isFullscreen ? '⤡' : '⤢'}</span>
+            <span>{isFullscreen ? 'Exit full screen' : 'Full screen'}</span>
+          </button>
+        </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -122,23 +161,31 @@ export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChor
               Today
             </button>
           </div>
+          <div className="space-y-1 text-xs text-slate-400 dark:text-slate-500">
+            <p>Use the arrows and view toggles to plan chores at a glance.</p>
+            <p className="text-[0.7rem] text-slate-400 dark:text-slate-500">
+              Tap “Full screen” whenever you want the calendar to take over the whole board.
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {VIEWS.map((view) => (
-            <button
-              key={view.id}
-              type="button"
-              onClick={() => setActiveView(view.id)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                activeView === view.id
-                  ? 'bg-famboard-primary text-white shadow-lg focus:ring-famboard-accent'
-                  : 'bg-white text-slate-600 shadow focus:ring-famboard-primary/40 hover:bg-famboard-primary/10 hover:text-famboard-primary dark:bg-slate-800 dark:text-slate-300'
-              }`}
-              aria-pressed={activeView === view.id}
-            >
-              {view.label}
-            </button>
-          ))}
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {VIEWS.map((view) => (
+              <button
+                key={view.id}
+                type="button"
+                onClick={() => setActiveView(view.id)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  activeView === view.id
+                    ? 'bg-famboard-primary text-white shadow-lg focus:ring-famboard-accent'
+                    : 'bg-white text-slate-600 shadow focus:ring-famboard-primary/40 hover:bg-famboard-primary/10 hover:text-famboard-primary dark:bg-slate-800 dark:text-slate-300'
+                }`}
+                aria-pressed={activeView === view.id}
+              >
+                {view.label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -287,7 +334,27 @@ export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChor
           </div>
         </div>
       )}
-    </div>
+    </>
+  )
+
+  const calendarContent = <div className="space-y-6">{calendarSections}</div>
+
+  if (!isFullscreen || typeof document === 'undefined') {
+    return calendarContent
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-100 px-4 py-6 dark:bg-slate-950 sm:px-8"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Chore calendar full screen view"
+    >
+      <div className="mx-auto flex min-h-full max-w-7xl flex-col">
+        {calendarContent}
+      </div>
+    </div>,
+    document.body,
   )
 }
 
