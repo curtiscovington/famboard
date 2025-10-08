@@ -194,6 +194,170 @@ function RewardAdminCard({ reward, onSave, onRemove }) {
   )
 }
 
+function ChoreAdminCard({ chore, members, onSave, onRemove }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [form, setForm] = useState({
+    title: chore.title,
+    description: chore.description,
+    assignedTo: chore.assignedTo ?? '',
+    points: chore.points,
+    imageUrl: chore.imageUrl ?? '',
+  })
+
+  useEffect(() => {
+    setForm({
+      title: chore.title,
+      description: chore.description,
+      assignedTo: chore.assignedTo ?? '',
+      points: chore.points,
+      imageUrl: chore.imageUrl ?? '',
+    })
+  }, [chore])
+
+  const assignedMember = members.find((member) => member.id === chore.assignedTo)
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    onSave(chore.id, {
+      title: form.title.trim() || chore.title,
+      description: form.description.trim(),
+      assignedTo: form.assignedTo || null,
+      points: Number(form.points) || 0,
+      imageUrl: form.imageUrl.trim(),
+    })
+    setIsEditing(false)
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-5 shadow-sm transition hover:border-famboard-primary/60 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900/80">
+      {isEditing ? (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-16 w-16 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-600 dark:bg-slate-800">
+              {form.imageUrl ? (
+                <img src={form.imageUrl} alt={form.title} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-2xl">🧹</div>
+              )}
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Update the title, picture, or assignment for this chore.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Chore title</label>
+            <input
+              value={form.title}
+              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+              rows={3}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Assign to</label>
+              <select
+                value={form.assignedTo}
+                onChange={(event) => setForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              >
+                <option value="">Unassigned</option>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Points</label>
+              <input
+                type="number"
+                min="0"
+                value={form.points}
+                onChange={(event) => setForm((prev) => ({ ...prev, points: event.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Picture URL</label>
+            <input
+              value={form.imageUrl}
+              onChange={(event) => setForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
+              placeholder="https://..."
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            />
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              className="flex-1 rounded-full bg-famboard-primary px-4 py-2 text-sm font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-famboard-accent focus:ring-offset-2"
+            >
+              Save chore
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
+              {chore.imageUrl ? (
+                <img src={chore.imageUrl} alt={chore.title} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-3xl">🧽</div>
+              )}
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-white">{chore.title}</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{chore.description || 'Add a description to guide helpers.'}</p>
+                </div>
+                <span className="rounded-full bg-famboard-primary/10 px-3 py-1 text-sm font-semibold text-famboard-primary dark:bg-sky-400/10 dark:text-sky-200">
+                  {chore.points} pts
+                </span>
+              </div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {assignedMember ? `Assigned to ${assignedMember.name}` : 'Unassigned'}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Edit chore
+            </button>
+            <button
+              onClick={() => onRemove(chore.id)}
+              className="rounded-full border border-rose-400 px-4 py-2 text-sm font-semibold text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 dark:border-rose-500 dark:text-rose-300 dark:hover:bg-rose-500/10"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SettingsScreen() {
   const {
     state,
@@ -203,16 +367,26 @@ export default function SettingsScreen() {
     addReward,
     updateReward,
     removeReward,
+    addChore,
+    updateChore,
+    removeChore,
     setTheme,
     resetAll,
   } = useFamboard()
-  const { familyMembers, rewards, theme } = state
+  const { familyMembers, rewards, chores, theme } = state
   const [memberName, setMemberName] = useState('')
   const [memberImage, setMemberImage] = useState('')
   const [rewardForm, setRewardForm] = useState({
     title: '',
     description: '',
     cost: 20,
+    imageUrl: '',
+  })
+  const [choreForm, setChoreForm] = useState({
+    title: '',
+    description: '',
+    assignedTo: '',
+    points: 10,
     imageUrl: '',
   })
 
@@ -269,6 +443,28 @@ export default function SettingsScreen() {
       imageUrl: rewardForm.imageUrl.trim(),
     })
     setRewardForm({ title: '', description: '', cost: 20, imageUrl: '' })
+  }
+
+  const handleCreateChore = (event) => {
+    event.preventDefault()
+    if (!choreForm.title.trim()) return
+    addChore({
+      title: choreForm.title.trim(),
+      description: choreForm.description.trim(),
+      assignedTo: choreForm.assignedTo || null,
+      points: Number(choreForm.points) || 0,
+      imageUrl: choreForm.imageUrl.trim(),
+    })
+    setChoreForm({ title: '', description: '', assignedTo: '', points: 10, imageUrl: '' })
+  }
+
+  const handleRemoveChore = (id) => {
+    if (
+      typeof window === 'undefined' ||
+      window.confirm('Remove this chore? Kids will no longer see it on their lists.')
+    ) {
+      removeChore(id)
+    }
   }
 
   return (
@@ -370,6 +566,94 @@ export default function SettingsScreen() {
           {familyMembers.length === 0 && (
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Add your family members above to start tracking points.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-3xl bg-white/85 p-8 shadow-card ring-1 ring-white/30 backdrop-blur dark:bg-slate-900/75 dark:ring-slate-800">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="max-w-2xl space-y-2">
+            <h2 className="font-display text-3xl text-slate-800 dark:text-white">Chore workshop</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Create new chores, adjust assignments, and remove tasks that have run their course. Kids will see updates instantly in their view.
+            </p>
+          </div>
+          <p className="rounded-full bg-famboard-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-famboard-primary dark:bg-sky-500/10 dark:text-sky-200">
+            Admin tools
+          </p>
+        </div>
+        <form onSubmit={handleCreateChore} className="mt-6 grid gap-5 md:grid-cols-2">
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Chore title</label>
+            <input
+              value={choreForm.title}
+              onChange={(event) => setChoreForm((prev) => ({ ...prev, title: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              placeholder="Tidy the playroom"
+              required
+            />
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Description</label>
+            <textarea
+              value={choreForm.description}
+              onChange={(event) => setChoreForm((prev) => ({ ...prev, description: event.target.value }))}
+              className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              placeholder="List the steps so everyone knows what finished looks like."
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Picture URL</label>
+            <input
+              value={choreForm.imageUrl}
+              onChange={(event) => setChoreForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              placeholder="https://..."
+            />
+            <p className="text-xs text-slate-400 dark:text-slate-500">Add a helpful visual so kids recognize the task.</p>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Assign to</label>
+            <select
+              value={choreForm.assignedTo}
+              onChange={(event) => setChoreForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            >
+              <option value="">Unassigned</option>
+              {familyMembers.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Points</label>
+            <input
+              type="number"
+              min="0"
+              value={choreForm.points}
+              onChange={(event) => setChoreForm((prev) => ({ ...prev, points: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <button
+              type="submit"
+              className="w-full rounded-full bg-emerald-500 px-6 py-3 text-lg font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-300/70"
+            >
+              Add chore
+            </button>
+          </div>
+        </form>
+        <div className="mt-8 grid gap-5 xl:grid-cols-2">
+          {chores.map((chore) => (
+            <ChoreAdminCard key={chore.id} chore={chore} members={familyMembers} onSave={updateChore} onRemove={handleRemoveChore} />
+          ))}
+          {chores.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-slate-300/70 bg-white/60 p-6 text-sm text-slate-500 shadow-inner dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-400">
+              No chores yet—add your first task above to populate the board.
             </p>
           )}
         </div>
