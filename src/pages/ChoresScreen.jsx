@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
 import { launchConfetti } from '../utils/confetti.js'
+import { getRecurrenceLabel, RECURRENCE_OPTIONS } from '../utils/recurrence.js'
 
 function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage = true }) {
   const [isEditing, setIsEditing] = useState(false)
@@ -11,6 +12,8 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
     assignedTo: chore.assignedTo ?? '',
     points: chore.points,
     imageUrl: chore.imageUrl ?? '',
+    recurrence: chore.recurrence ?? 'none',
+    rotateAssignment: Boolean(chore.rotateAssignment),
   })
 
   useEffect(() => {
@@ -20,6 +23,8 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
       assignedTo: chore.assignedTo ?? '',
       points: chore.points,
       imageUrl: chore.imageUrl ?? '',
+      recurrence: chore.recurrence ?? 'none',
+      rotateAssignment: Boolean(chore.rotateAssignment),
     })
   }, [chore])
 
@@ -39,6 +44,8 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
       assignedTo: form.assignedTo || null,
       points: Number(form.points) || 0,
       imageUrl: form.imageUrl.trim(),
+      recurrence: form.recurrence,
+      rotateAssignment: form.rotateAssignment,
     })
     setIsEditing(false)
   }
@@ -94,6 +101,7 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
                 value={form.assignedTo ?? ''}
                 onChange={(event) => setForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                disabled={form.rotateAssignment && familyMembers.length <= 1}
               >
                 <option value="">Unassigned</option>
                 {familyMembers.map((member) => (
@@ -102,6 +110,11 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
                   </option>
                 ))}
               </select>
+              {form.rotateAssignment && (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Assignment rotates automatically.
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
@@ -114,6 +127,45 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
                 onChange={(event) => setForm((prev) => ({ ...prev, points: event.target.value }))}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
               />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Repeats</label>
+              <select
+                value={form.recurrence}
+                onChange={(event) => setForm((prev) => ({ ...prev, recurrence: event.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              >
+                {RECURRENCE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Rotation</label>
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-inner dark:border-slate-700 dark:bg-slate-900">
+                <input
+                  id={`rotate-${chore.id}`}
+                  type="checkbox"
+                  checked={form.rotateAssignment}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      rotateAssignment: event.target.checked,
+                      assignedTo:
+                        event.target.checked && familyMembers.length === 0 ? '' : prev.assignedTo,
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-slate-300 text-famboard-primary focus:ring-famboard-primary"
+                />
+                <label htmlFor={`rotate-${chore.id}`} className="flex-1 cursor-pointer select-none">
+                  Rotate between family members
+                </label>
+              </div>
+              {form.rotateAssignment && familyMembers.length === 0 && (
+                <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
+              )}
             </div>
           </div>
           <div className="space-y-1">
@@ -175,6 +227,16 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             {assignedMember ? `Assigned to ${assignedMember.name}` : 'Unassigned'}
           </p>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium dark:bg-slate-800/60">
+              {getRecurrenceLabel(chore.recurrence ?? 'none')}
+            </span>
+            {chore.rotateAssignment && (
+              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium dark:bg-slate-800/60">
+                Rotates between helpers
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleToggle}
