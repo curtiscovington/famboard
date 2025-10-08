@@ -22,7 +22,7 @@ const VIEWS = [
   { id: 'month', label: 'Month view' },
 ]
 
-export function ChoreCalendar({ chores, familyMembers, focusMember }) {
+export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChore }) {
   const [activeView, setActiveView] = useState('week')
   const [focusDate, setFocusDate] = useState(() => startOfDay(new Date()))
 
@@ -159,6 +159,7 @@ export function ChoreCalendar({ chores, familyMembers, focusMember }) {
                     occurrence={occurrence}
                     member={memberMap.get(occurrence.assignedTo) ?? null}
                     todayKey={todayKey}
+                    onToggle={onToggleChore}
                   />
                 </li>
               ))}
@@ -290,8 +291,16 @@ export function ChoreCalendar({ chores, familyMembers, focusMember }) {
   )
 }
 
-function CalendarDayCard({ occurrence, member, todayKey }) {
+function CalendarDayCard({ occurrence, member, todayKey, onToggle }) {
   const isToday = occurrence.dateKey === todayKey
+  const isCompleted = occurrence.isCompletedToday && isToday
+  const canToggle = typeof onToggle === 'function' && isToday
+
+  const handleToggle = () => {
+    if (!canToggle) return
+    onToggle(occurrence.choreId, isCompleted)
+  }
+
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition hover:border-famboard-primary/60 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex items-start justify-between gap-3">
@@ -303,20 +312,36 @@ function CalendarDayCard({ occurrence, member, todayKey }) {
         </div>
         <span
           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-            occurrence.isCompletedToday && isToday
+            isCompleted
               ? 'bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-200'
               : 'bg-famboard-primary/10 text-famboard-primary dark:bg-sky-500/10 dark:text-sky-200'
           }`}
         >
-          {occurrence.isCompletedToday && isToday ? 'Completed' : `${occurrence.points} pts`}
+          {isCompleted ? 'Completed' : `${occurrence.points} pts`}
         </span>
       </div>
       {occurrence.description && (
         <p className="text-sm text-slate-500 dark:text-slate-400">{occurrence.description}</p>
       )}
-      <p className="text-[0.65rem] text-slate-400 dark:text-slate-500">
-        Event UID: {occurrence.icsEvent.uid}
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {canToggle && (
+          <button
+            type="button"
+            onClick={handleToggle}
+            aria-pressed={isCompleted}
+            className={`inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              isCompleted
+                ? 'bg-emerald-500/20 text-emerald-700 hover:bg-emerald-500/30 focus:ring-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-100 dark:hover:bg-emerald-500/30 dark:focus:ring-emerald-400/40'
+                : 'bg-famboard-primary text-white shadow-sm hover:-translate-y-0.5 hover:bg-famboard-dark focus:ring-famboard-accent dark:focus:ring-sky-400'
+            }`}
+          >
+            {isCompleted ? 'Mark as not done' : 'Mark complete'}
+          </button>
+        )}
+        <p className="text-[0.65rem] text-slate-400 dark:text-slate-500">
+          Event UID: {occurrence.icsEvent.uid}
+        </p>
+      </div>
     </div>
   )
 }

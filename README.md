@@ -25,7 +25,7 @@ npm install
 npm run dev
 ```
 
-The app is optimized for tablets, but it scales down nicely in a regular desktop browser window. You can install it locally by clicking the “Install” option in supported browsers once the dev server is running.
+When the dev server starts, open [http://localhost:5173/famboard/](http://localhost:5173/famboard/) (or the forwarded port with the same `/famboard/` base) to reach the app. The app is optimized for tablets, but it scales down nicely in a regular desktop browser window. You can install it locally by clicking the “Install” option in supported browsers once the dev server is running.
 
 > Requires Node.js 20.19.0 or newer. With `nvm`, run `nvm install 20.19.0 && nvm use` before installing dependencies.
 
