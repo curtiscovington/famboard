@@ -4,6 +4,7 @@ const STORAGE_KEY = 'famboard-state-v1'
 
 const defaultData = {
   theme: 'light',
+  activeView: 'family',
   familyMembers: [
     {
       id: 'member-1',
@@ -138,6 +139,16 @@ export function FamboardProvider({ children }) {
             },
           ],
         })),
+      setActiveView: (view) =>
+        setState((prev) => {
+          if (view !== 'family' && !prev.familyMembers.some((member) => member.id === view)) {
+            return prev
+          }
+          return {
+            ...prev,
+            activeView: view,
+          }
+        }),
       updateFamilyMember: (id, updates) =>
         setState((prev) => ({
           ...prev,
@@ -152,6 +163,7 @@ export function FamboardProvider({ children }) {
           chores: prev.chores.map((chore) =>
             chore.assignedTo === id ? { ...chore, assignedTo: null } : chore,
           ),
+          activeView: prev.activeView === id ? 'family' : prev.activeView,
         })),
       addChore: (payload) =>
         setState((prev) => ({
@@ -340,6 +352,7 @@ export function FamboardProvider({ children }) {
         setState({
           ...defaultData,
           theme: state.theme,
+          activeView: 'family',
         }),
     }),
     [state.theme],

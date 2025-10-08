@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import HomeScreen from './pages/HomeScreen.jsx'
 import ChoresScreen from './pages/ChoresScreen.jsx'
@@ -24,6 +24,96 @@ function ThemeToggle() {
     >
       {isDark ? '🌙 Dark' : '☀️ Light'}
     </button>
+  )
+}
+
+function UserSwitcher() {
+  const { state, setActiveView } = useFamboard()
+  const { familyMembers, chores, activeView } = state
+
+  const totalFamilyPoints = useMemo(
+    () => familyMembers.reduce((sum, member) => sum + member.points, 0),
+    [familyMembers],
+  )
+
+  const familyOpenChores = useMemo(
+    () => chores.filter((chore) => !chore.completed).length,
+    [chores],
+  )
+
+  const getMemberChoreCount = (memberId) =>
+    chores.filter((chore) => !chore.completed && chore.assignedTo === memberId).length
+
+  const tileBaseClasses =
+    'flex min-w-[15rem] flex-1 items-center gap-4 rounded-3xl border px-4 py-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-famboard-primary/40 focus:ring-offset-2'
+
+  return (
+    <section className="mx-auto mt-4 w-full max-w-6xl px-4">
+      <div className="flex snap-x gap-3 overflow-x-auto pb-2 md:flex-wrap md:pb-0">
+        <button
+          type="button"
+          onClick={() => setActiveView('family')}
+          className={`${tileBaseClasses} snap-center ${
+            activeView === 'family'
+              ? 'border-famboard-primary bg-famboard-primary/10 text-famboard-dark dark:border-sky-500 dark:bg-sky-500/10 dark:text-sky-100'
+              : 'border-white/60 bg-white/80 text-slate-600 hover:border-famboard-primary/40 hover:bg-famboard-primary/10 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200'
+          }`}
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-famboard-primary/20 text-3xl dark:bg-sky-500/20" aria-hidden>
+            👨‍👩‍👧‍👦
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold uppercase tracking-wide">Family view</p>
+            <p className="text-lg font-display text-slate-900 dark:text-white">Everyone</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {familyMembers.length} members · {familyOpenChores} chores · {totalFamilyPoints} pts
+            </p>
+          </div>
+        </button>
+        {familyMembers.map((member) => {
+          const upcoming = getMemberChoreCount(member.id)
+          const isActive = activeView === member.id
+          return (
+            <button
+              type="button"
+              key={member.id}
+              onClick={() => setActiveView(member.id)}
+              className={`${tileBaseClasses} snap-center ${
+                isActive
+                  ? 'border-famboard-primary bg-famboard-primary/10 text-famboard-dark dark:border-sky-500 dark:bg-sky-500/10 dark:text-sky-100'
+                  : 'border-white/60 bg-white/80 text-slate-600 hover:border-famboard-primary/40 hover:bg-famboard-primary/10 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200'
+              }`}
+            >
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/80 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
+                {member.imageUrl ? (
+                  <img src={member.imageUrl} alt={member.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-2xl">😊</div>
+                )}
+              </div>
+              <div className="space-y-1 text-left">
+                <p className="text-sm font-semibold uppercase tracking-wide">{member.name}</p>
+                <p className="text-lg font-display text-famboard-primary dark:text-sky-300">{member.points} pts</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{upcoming} chore{upcoming === 1 ? '' : 's'} waiting</p>
+              </div>
+            </button>
+          )
+        })}
+        {familyMembers.length === 0 && (
+          <div className={`${tileBaseClasses} border-dashed border-slate-300/70 bg-white/60 text-slate-500 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-400`}>
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200/80 text-2xl dark:bg-slate-700/80" aria-hidden>
+              ➕
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold uppercase tracking-wide">No members yet</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Add family members in settings to personalize the board.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -111,6 +201,7 @@ function Layout() {
           </div>
         </div>
       )}
+      <UserSwitcher />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         {isHydrated ? (
           <Outlet />
