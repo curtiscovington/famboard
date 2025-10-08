@@ -9,23 +9,27 @@ const STORAGE_KEY = 'famboard-state-v1'
 const defaultData = {
   theme: 'light',
   activeView: 'family',
+  mediaLibrary: [],
   familyMembers: [
     {
       id: 'member-1',
       name: 'Alex',
       points: 0,
+      imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=160&q=80',
     },
     {
       id: 'member-2',
       name: 'Jamie',
       points: 0,
+      imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1520719627573-5e2c1a6610f0?auto=format&fit=crop&w=160&q=80',
     },
     {
       id: 'member-3',
       name: 'Riley',
       points: 0,
+      imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1445633883498-7f9922d37a3d?auto=format&fit=crop&w=160&q=80',
     },
   ],
@@ -38,6 +42,7 @@ const defaultData = {
       points: 10,
       completed: false,
       completedAt: null,
+      imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
       recurrence: 'daily',
       rotateAssignment: false,
@@ -50,6 +55,7 @@ const defaultData = {
       points: 8,
       completed: false,
       completedAt: null,
+      imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=200&q=80',
       recurrence: 'weekdays',
       rotateAssignment: true,
@@ -62,6 +68,7 @@ const defaultData = {
       points: 12,
       completed: false,
       completedAt: null,
+      imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=200&q=80',
       recurrence: 'weekly',
       rotateAssignment: false,
@@ -73,6 +80,7 @@ const defaultData = {
       title: 'Pick the family movie',
       description: 'Choose the movie for Friday movie night.',
       cost: 30,
+      imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=200&q=80',
     },
     {
@@ -80,6 +88,7 @@ const defaultData = {
       title: 'Extra 30 minutes of screen time',
       description: 'Enjoy more tablet or console time.',
       cost: 45,
+      imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1486578077620-8a022ddd481f?auto=format&fit=crop&w=200&q=80',
     },
     {
@@ -87,6 +96,7 @@ const defaultData = {
       title: 'Choose dinner',
       description: 'Decide what the family will have for dinner.',
       cost: 60,
+      imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
     },
   ],
@@ -197,6 +207,45 @@ export function FamboardProvider({ children }) {
           ...prev,
           theme,
         })),
+      upsertMediaItem: (item) =>
+        setState((prev) => {
+          if (!item?.id) return prev
+          const existingIndex = prev.mediaLibrary.findIndex((media) => media.id === item.id)
+          const nextLibrary = [...prev.mediaLibrary]
+          if (existingIndex >= 0) {
+            nextLibrary[existingIndex] = { ...nextLibrary[existingIndex], ...item }
+          } else {
+            nextLibrary.push(item)
+          }
+          nextLibrary.sort((a, b) => {
+            const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0
+            const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : 0
+            return bTime - aTime
+          })
+          return {
+            ...prev,
+            mediaLibrary: nextLibrary,
+          }
+        }),
+      removeMediaItem: (id) =>
+        setState((prev) => {
+          if (!prev.mediaLibrary.some((media) => media.id === id)) {
+            return prev
+          }
+          return {
+            ...prev,
+            mediaLibrary: prev.mediaLibrary.filter((media) => media.id !== id),
+            familyMembers: prev.familyMembers.map((member) =>
+              member.imageId === id ? { ...member, imageId: null } : member,
+            ),
+            chores: prev.chores.map((chore) =>
+              chore.imageId === id ? { ...chore, imageId: null } : chore,
+            ),
+            rewards: prev.rewards.map((reward) =>
+              reward.imageId === id ? { ...reward, imageId: null } : reward,
+            ),
+          }
+        }),
       addFamilyMember: (payload) =>
         setState((prev) => ({
           ...prev,
@@ -206,6 +255,7 @@ export function FamboardProvider({ children }) {
               id: createId('member'),
               name: payload.name,
               points: 0,
+              imageId: payload.imageId ?? null,
               imageUrl: payload.imageUrl ?? '',
             },
           ],
@@ -223,9 +273,15 @@ export function FamboardProvider({ children }) {
       updateFamilyMember: (id, updates) =>
         setState((prev) => ({
           ...prev,
-          familyMembers: prev.familyMembers.map((member) =>
-            member.id === id ? { ...member, ...updates } : member,
-          ),
+          familyMembers: prev.familyMembers.map((member) => {
+            if (member.id !== id) return member
+            return {
+              ...member,
+              ...updates,
+              imageId: updates.imageId !== undefined ? updates.imageId : member.imageId ?? null,
+              imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : member.imageUrl ?? '',
+            }
+          }),
         })),
       removeFamilyMember: (id) =>
         setState((prev) => ({
@@ -251,6 +307,7 @@ export function FamboardProvider({ children }) {
               points: Math.max(Number(payload.points) || 0, 0),
               completed: false,
               completedAt: null,
+              imageId: payload.imageId ?? null,
               imageUrl: payload.imageUrl ?? '',
               recurrence: payload.recurrence ?? 'none',
               rotateAssignment: Boolean(payload.rotateAssignment),
@@ -286,6 +343,7 @@ export function FamboardProvider({ children }) {
                   ...updates,
                   assignedTo: nextAssigned ?? null,
                   points: nextPoints,
+                  imageId: updates.imageId !== undefined ? updates.imageId : chore.imageId ?? null,
                   imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : chore.imageUrl,
                   recurrence: nextRecurrence,
                   rotateAssignment: nextRotateAssignment,
@@ -391,6 +449,7 @@ export function FamboardProvider({ children }) {
               title: payload.title,
               description: payload.description,
               cost: Math.max(Number(payload.cost) || 0, 0),
+              imageId: payload.imageId ?? null,
               imageUrl: payload.imageUrl ?? '',
             },
           ],
@@ -407,6 +466,7 @@ export function FamboardProvider({ children }) {
                     updates.cost !== undefined
                       ? Math.max(Number(updates.cost) || 0, 0)
                       : reward.cost,
+                  imageId: updates.imageId !== undefined ? updates.imageId : reward.imageId ?? null,
                   imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : reward.imageUrl,
                 }
               : reward,
@@ -436,11 +496,12 @@ export function FamboardProvider({ children }) {
           }
         }),
       resetAll: () =>
-        setState({
+        setState((prev) => ({
           ...defaultData,
           theme: state.theme,
           activeView: 'family',
-        }),
+          mediaLibrary: prev.mediaLibrary,
+        })),
     }),
     [state.theme],
   )

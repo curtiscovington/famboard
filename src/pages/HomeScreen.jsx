@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
+import { MediaImage } from '../components/MediaImage.jsx'
 import { launchConfetti } from '../utils/confetti.js'
 
 export default function HomeScreen() {
@@ -66,7 +67,14 @@ export default function HomeScreen() {
           <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-5">
               <div className="h-24 w-24 shrink-0 overflow-hidden rounded-4xl border border-white/50 bg-white/10 shadow-inner backdrop-blur">
-                {selectedMember.imageUrl ? (
+                {selectedMember.imageId ? (
+                  <MediaImage
+                    mediaId={selectedMember.imageId}
+                    alt={selectedMember.name}
+                    className="h-full w-full object-cover"
+                    fallback={<div className="flex h-full w-full items-center justify-center text-4xl">😊</div>}
+                  />
+                ) : selectedMember.imageUrl ? (
                   <img src={selectedMember.imageUrl} alt={selectedMember.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-4xl">😊</div>
@@ -178,7 +186,14 @@ export default function HomeScreen() {
               <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-famboard-primary/10 blur-2xl transition group-hover:bg-famboard-primary/20" aria-hidden />
               <div className="flex items-center gap-4">
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
-                  {selectedMember.imageUrl ? (
+                  {selectedMember.imageId ? (
+                    <MediaImage
+                      mediaId={selectedMember.imageId}
+                      alt={selectedMember.name}
+                      className="h-full w-full object-cover"
+                      fallback={<div className="flex h-full w-full items-center justify-center text-3xl">😊</div>}
+                    />
+                  ) : selectedMember.imageUrl ? (
                     <img src={selectedMember.imageUrl} alt={selectedMember.name} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-3xl">😊</div>
@@ -227,7 +242,14 @@ export default function HomeScreen() {
                 <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-famboard-primary/10 blur-2xl transition group-hover:bg-famboard-primary/20" aria-hidden />
                 <div className="flex items-center gap-4">
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
-                    {member.imageUrl ? (
+                    {member.imageId ? (
+                      <MediaImage
+                        mediaId={member.imageId}
+                        alt={member.name}
+                        className="h-full w-full object-cover"
+                        fallback={<div className="flex h-full w-full items-center justify-center text-3xl">😊</div>}
+                      />
+                    ) : member.imageUrl ? (
                       <img src={member.imageUrl} alt={member.name} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-3xl">😊</div>
@@ -281,7 +303,14 @@ export default function HomeScreen() {
                   className="flex items-center gap-4 rounded-2xl border border-slate-200/60 bg-white/90 p-4 shadow-sm transition hover:border-famboard-primary/50 hover:shadow dark:border-slate-700 dark:bg-slate-900/70"
                 >
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
-                    {chore.imageUrl ? (
+                    {chore.imageId ? (
+                      <MediaImage
+                        mediaId={chore.imageId}
+                        alt={chore.title}
+                        className="h-full w-full object-cover"
+                        fallback={<div className="flex h-full w-full items-center justify-center text-2xl">🧺</div>}
+                      />
+                    ) : chore.imageUrl ? (
                       <img src={chore.imageUrl} alt={chore.title} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-2xl">🧺</div>
@@ -336,7 +365,14 @@ export default function HomeScreen() {
                   className="flex items-center gap-4 rounded-2xl border border-emerald-200/60 bg-white/90 p-4 shadow-sm dark:border-emerald-700 dark:bg-slate-900/70"
                 >
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50 shadow-inner dark:border-emerald-700 dark:bg-emerald-900/40">
-                    {chore.imageUrl ? (
+                    {chore.imageId ? (
+                      <MediaImage
+                        mediaId={chore.imageId}
+                        alt={chore.title}
+                        className="h-full w-full object-cover"
+                        fallback={<div className="flex h-full w-full items-center justify-center text-2xl">🌟</div>}
+                      />
+                    ) : chore.imageUrl ? (
                       <img src={chore.imageUrl} alt={chore.title} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-2xl">🌟</div>
@@ -392,7 +428,14 @@ export default function HomeScreen() {
               <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-famboard-primary/10 blur-3xl transition group-hover:bg-famboard-primary/20" aria-hidden />
               <div className="space-y-2">
                 <div className="h-24 w-full overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
-                  {reward.imageUrl ? (
+                  {reward.imageId ? (
+                    <MediaImage
+                      mediaId={reward.imageId}
+                      alt={reward.title}
+                      className="h-full w-full object-cover"
+                      fallback={<div className="flex h-full w-full items-center justify-center text-3xl">🎈</div>}
+                    />
+                  ) : reward.imageUrl ? (
                     <img src={reward.imageUrl} alt={reward.title} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-3xl">🎈</div>
