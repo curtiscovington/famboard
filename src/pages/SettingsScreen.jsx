@@ -28,7 +28,16 @@ const SHOULD_REQUIRE_SETTINGS_PIN =
       ? false
       : import.meta.env.PROD
 
+const mapRewardToFormState = (reward) => ({
+  title: reward.title,
+  description: reward.description,
+  cost: reward.cost,
+  imageId: reward.imageId ?? null,
+  imageUrl: reward.imageUrl ?? '',
+})
+
 function MemberCard({ member, onSave, onRemove }) {
+  const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(member.name)
   const [imageId, setImageId] = useState(member.imageId ?? null)
   const [imageUrl, setImageUrl] = useState(member.imageUrl ?? '')
@@ -37,7 +46,14 @@ function MemberCard({ member, onSave, onRemove }) {
     setName(member.name)
     setImageId(member.imageId ?? null)
     setImageUrl(member.imageUrl ?? '')
+    setIsEditing(false)
   }, [member])
+
+  const resetForm = () => {
+    setName(member.name)
+    setImageId(member.imageId ?? null)
+    setImageUrl(member.imageUrl ?? '')
+  }
 
   const handleSubmit = (event) => {
     event.preventDefault()
@@ -46,71 +62,112 @@ function MemberCard({ member, onSave, onRemove }) {
       imageId,
       imageUrl: imageUrl.trim(),
     })
+    setIsEditing(false)
   }
 
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-5 shadow-sm transition hover:border-famboard-primary/60 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900/80">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <MediaPicker
-          label="Profile photo"
-          description="Add a friendly face so kids can spot their card at a glance."
-          imageId={imageId}
-          imageUrl={imageUrl}
-          onChange={(next) => {
-            setImageId(next.imageId ?? null)
-            setImageUrl(next.imageUrl ?? '')
-          }}
-        />
-        <div className="space-y-1">
-          <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-            Family member name
-          </label>
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+      {isEditing ? (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <MediaPicker
+            label="Profile photo"
+            description="Add a friendly face so kids can spot their card at a glance."
+            imageId={imageId}
+            imageUrl={imageUrl}
+            onChange={(next) => {
+              setImageId(next.imageId ?? null)
+              setImageUrl(next.imageUrl ?? '')
+            }}
           />
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+              Family member name
+            </label>
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            />
+          </div>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Points: <span className="font-semibold text-famboard-primary dark:text-sky-300">{member.points}</span>
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              className="flex-1 rounded-full bg-famboard-primary px-4 py-2 text-sm font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-famboard-accent focus:ring-offset-2"
+            >
+              Save member
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                resetForm()
+                setIsEditing(false)
+              }}
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
+              {member.imageId ? (
+                <MediaImage
+                  mediaId={member.imageId}
+                  alt={member.name}
+                  className="h-full w-full object-cover"
+                  fallback={<div className="flex h-full w-full items-center justify-center text-3xl">🙂</div>}
+                />
+              ) : member.imageUrl ? (
+                <img src={member.imageUrl} alt={member.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-3xl">🙂</div>
+              )}
+            </div>
+            <div className="flex-1 space-y-2">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-white">{member.name}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Keep their profile updated so kids can spot their card in a snap.
+              </p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Points: <span className="font-semibold text-famboard-primary dark:text-sky-300">{member.points}</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => {
+                resetForm()
+                setIsEditing(true)
+              }}
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Edit member
+            </button>
+            <button
+              onClick={() => onRemove(member.id)}
+              className="rounded-full border border-rose-400 px-4 py-2 text-sm font-semibold text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 dark:border-rose-500 dark:text-rose-300 dark:hover:bg-rose-500/10"
+            >
+              Remove
+            </button>
+          </div>
         </div>
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Points: <span className="font-semibold text-famboard-primary dark:text-sky-300">{member.points}</span>
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="submit"
-            className="flex-1 rounded-full bg-famboard-primary px-4 py-2 text-sm font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-famboard-accent focus:ring-offset-2"
-          >
-            Save name
-          </button>
-          <button
-            type="button"
-            onClick={() => onRemove(member.id)}
-            className="rounded-full border border-rose-400 px-4 py-2 text-sm font-semibold text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 dark:border-rose-500 dark:text-rose-300 dark:hover:bg-rose-500/10"
-          >
-            Remove
-          </button>
-        </div>
-      </form>
+      )}
     </div>
   )
 }
 
 function RewardAdminCard({ reward, onSave, onRemove }) {
-  const [form, setForm] = useState({
-    title: reward.title,
-    description: reward.description,
-    cost: reward.cost,
-    imageId: reward.imageId ?? null,
-    imageUrl: reward.imageUrl ?? '',
-  })
+  const [isEditing, setIsEditing] = useState(false)
+  const [form, setForm] = useState(mapRewardToFormState(reward))
 
   useEffect(() => {
-    setForm({
-      title: reward.title,
-      description: reward.description,
-      cost: reward.cost,
-      imageId: reward.imageId ?? null,
-      imageUrl: reward.imageUrl ?? '',
-    })
+    setForm(mapRewardToFormState(reward))
+    setIsEditing(false)
   }, [reward])
 
   const handleSubmit = (event) => {
@@ -122,73 +179,131 @@ function RewardAdminCard({ reward, onSave, onRemove }) {
       imageId: form.imageId ?? null,
       imageUrl: form.imageUrl.trim(),
     })
+    setIsEditing(false)
   }
 
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-5 shadow-sm transition hover:border-famboard-primary/60 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900/80">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <MediaPicker
-          label="Reward photo"
-          description="Visual rewards help non-readers understand the prize instantly."
-          imageId={form.imageId}
-          imageUrl={form.imageUrl}
-          onChange={(next) =>
-            setForm((prev) => ({
-              ...prev,
-              imageId: next.imageId ?? null,
-              imageUrl: next.imageUrl ?? '',
-            }))
-          }
-        />
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Reward title
-          </label>
-          <input
-            value={form.title}
-            onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+      {isEditing ? (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <MediaPicker
+            label="Reward photo"
+            description="Visual rewards help non-readers understand the prize instantly."
+            imageId={form.imageId}
+            imageUrl={form.imageUrl}
+            onChange={(next) =>
+              setForm((prev) => ({
+                ...prev,
+                imageId: next.imageId ?? null,
+                imageUrl: next.imageUrl ?? '',
+              }))
+            }
           />
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Reward title
+            </label>
+            <input
+              value={form.title}
+              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Description
+            </label>
+            <textarea
+              value={form.description}
+              onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Cost (points)
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={form.cost}
+              onChange={(event) => setForm((prev) => ({ ...prev, cost: event.target.value }))}
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            />
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              className="flex-1 rounded-full bg-famboard-primary px-4 py-2 text-sm font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-famboard-accent focus:ring-offset-2"
+            >
+              Save reward
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setForm(mapRewardToFormState(reward))
+                setIsEditing(false)
+              }}
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
+              {reward.imageId ? (
+                <MediaImage
+                  mediaId={reward.imageId}
+                  alt={reward.title}
+                  className="h-full w-full object-cover"
+                  fallback={<div className="flex h-full w-full items-center justify-center text-3xl">🎉</div>}
+                />
+              ) : reward.imageUrl ? (
+                <img src={reward.imageUrl} alt={reward.title} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-3xl">🎉</div>
+              )}
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-white">{reward.title}</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {reward.description || 'Add a description so kids know exactly what they earned.'}
+                  </p>
+                </div>
+                <span className="rounded-full bg-famboard-primary/10 px-3 py-1 text-sm font-semibold text-famboard-primary dark:bg-sky-400/10 dark:text-sky-200">
+                  {reward.cost} pts
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Keep rewards fresh to keep helpers motivated.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => {
+                setForm(mapRewardToFormState(reward))
+                setIsEditing(true)
+              }}
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Edit reward
+            </button>
+            <button
+              onClick={() => onRemove(reward.id)}
+              className="rounded-full border border-rose-400 px-4 py-2 text-sm font-semibold text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 dark:border-rose-500 dark:text-rose-300 dark:hover:bg-rose-500/10"
+            >
+              Remove
+            </button>
+          </div>
         </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Description
-          </label>
-          <textarea
-            value={form.description}
-            onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-            rows={3}
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Cost (points)
-          </label>
-          <input
-            type="number"
-            min="0"
-            value={form.cost}
-            onChange={(event) => setForm((prev) => ({ ...prev, cost: event.target.value }))}
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-          />
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="submit"
-            className="flex-1 rounded-full bg-famboard-primary px-4 py-2 text-sm font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-famboard-accent focus:ring-offset-2"
-          >
-            Save reward
-          </button>
-          <button
-            type="button"
-            onClick={() => onRemove(reward.id)}
-            className="rounded-full border border-rose-400 px-4 py-2 text-sm font-semibold text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 dark:border-rose-500 dark:text-rose-300 dark:hover:bg-rose-500/10"
-          >
-            Remove
-          </button>
-        </div>
-      </form>
+      )}
     </div>
   )
 }
