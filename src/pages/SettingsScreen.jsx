@@ -12,8 +12,21 @@ import {
   parseInputDateToISO,
   toStartOfDayISOString,
 } from '../utils/date.js'
+import {
+  DEFAULT_PIN_ITERATIONS,
+  derivePinHash,
+  generatePinSalt,
+  verifyPin,
+} from '../utils/pin.js'
 
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
+const PIN_REQUIREMENT_OVERRIDE = import.meta.env.VITE_REQUIRE_SETTINGS_PIN
+const SHOULD_REQUIRE_SETTINGS_PIN =
+  PIN_REQUIREMENT_OVERRIDE === 'true'
+    ? true
+    : PIN_REQUIREMENT_OVERRIDE === 'false'
+      ? false
+      : import.meta.env.PROD
 
 function MemberCard({ member, onSave, onRemove }) {
   const [name, setName] = useState(member.name)
@@ -434,6 +447,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
 export default function SettingsScreen() {
   const {
     state,
+    isHydrated,
     addFamilyMember,
     updateFamilyMember,
     removeFamilyMember,
@@ -445,8 +459,20 @@ export default function SettingsScreen() {
     removeChore,
     setTheme,
     resetAll,
+    setSettingsPin,
   } = useFamboard()
-  const { familyMembers, rewards, chores, theme } = state
+  const { familyMembers, rewards, chores, theme, settingsPin } = state
+  const [isUnlocked, setIsUnlocked] = useState(!SHOULD_REQUIRE_SETTINGS_PIN)
+  const [pinEntry, setPinEntry] = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [pinHint, setPinHint] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [pinLoading, setPinLoading] = useState(false)
+  const [showChangePin, setShowChangePin] = useState(false)
+  const [changePinForm, setChangePinForm] = useState({ current: '', next: '', confirm: '', hint: '' })
+  const [changePinError, setChangePinError] = useState('')
+  const [changePinLoading, setChangePinLoading] = useState(false)
   const [memberName, setMemberName] = useState('')
   const [memberImageUrl, setMemberImageUrl] = useState('')
   const [memberImageId, setMemberImageId] = useState(null)
@@ -470,6 +496,159 @@ export default function SettingsScreen() {
     scheduleAnchor: formatDateForInput(toStartOfDayISOString(new Date())),
   })
 
+  useEffect(() => {
+    if (!showChangePin) return
+    setChangePinForm({
+      current: '',
+      next: '',
+      confirm: '',
+      hint: settingsPin?.hint ?? '',
+    })
+    setChangePinError('')
+  }, [showChangePin, settingsPin])
+
+  const handleVerifyPin = async (event) => {
+    event.preventDefault()
+    if (pinLoading) return
+    if (!settingsPin) return
+
+    setPinError('')
+    setPinLoading(true)
+
+    try {
+      const input = pinEntry.trim()
+      if (!input) {
+        setPinError('Enter your PIN to unlock the settings.')
+        return
+      }
+      if (input.length < 4) {
+        setPinError('PINs are at least 4 digits long.')
+        return
+      }
+      if (!/^\d+$/.test(input)) {
+        setPinError('PINs use digits only.')
+        setPinEntry('')
+        return
+      }
+
+      const isValid = await verifyPin(input, settingsPin)
+      if (!isValid) {
+        setPinError('That PIN did not match. Try again or check your hint.')
+        setPinEntry('')
+        return
+      }
+
+      setIsUnlocked(true)
+      setPinEntry('')
+      setPinError('')
+    } catch (error) {
+      console.error('Unable to verify PIN', error)
+      setPinError('We could not verify the PIN on this device. Try updating your browser.')
+    } finally {
+      setPinLoading(false)
+    }
+  }
+
+  const handleSetupPin = async (event) => {
+    event.preventDefault()
+    if (pinLoading) return
+
+    setPinError('')
+
+    const basePin = newPin.trim()
+    const confirmed = confirmPin.trim()
+    if (basePin.length < 4) {
+      setPinError('Choose a PIN with at least 4 digits so it is harder to guess.')
+      return
+    }
+    if (!/^\d+$/.test(basePin)) {
+      setPinError('For now PINs must use digits only.')
+      return
+    }
+    if (basePin !== confirmed) {
+      setPinError('Your PIN entries need to match before we can save them.')
+      return
+    }
+
+    setPinLoading(true)
+
+    try {
+      const salt = generatePinSalt()
+      const hash = await derivePinHash(basePin, salt, DEFAULT_PIN_ITERATIONS)
+      setSettingsPin({
+        salt,
+        hash,
+        iterations: DEFAULT_PIN_ITERATIONS,
+        hint: pinHint.trim(),
+        createdAt: new Date().toISOString(),
+      })
+      setIsUnlocked(true)
+      setNewPin('')
+      setConfirmPin('')
+      setPinHint('')
+    } catch (error) {
+      console.error('Unable to set PIN', error)
+      setPinError('We could not save that PIN. Make sure this browser supports secure storage.')
+    } finally {
+      setPinLoading(false)
+    }
+  }
+
+  const handleChangePin = async (event) => {
+    event.preventDefault()
+    if (changePinLoading) return
+    if (!settingsPin) return
+
+    setChangePinError('')
+
+    const current = changePinForm.current.trim()
+    const next = changePinForm.next.trim()
+    const confirmation = changePinForm.confirm.trim()
+
+    if (!current) {
+      setChangePinError('Enter your current PIN to make a change.')
+      return
+    }
+    if (next.length < 4) {
+      setChangePinError('The new PIN needs at least 4 digits.')
+      return
+    }
+    if (!/^\d+$/.test(next)) {
+      setChangePinError('The new PIN must use digits only.')
+      return
+    }
+    if (next !== confirmation) {
+      setChangePinError('The new PIN entries must match.')
+      return
+    }
+
+    setChangePinLoading(true)
+
+    try {
+      const isValid = await verifyPin(current, settingsPin)
+      if (!isValid) {
+        setChangePinError('That current PIN was incorrect.')
+        return
+      }
+
+      const salt = generatePinSalt()
+      const hash = await derivePinHash(next, salt, DEFAULT_PIN_ITERATIONS)
+      setSettingsPin({
+        salt,
+        hash,
+        iterations: DEFAULT_PIN_ITERATIONS,
+        hint: changePinForm.hint.trim(),
+        updatedAt: new Date().toISOString(),
+      })
+      setShowChangePin(false)
+    } catch (error) {
+      console.error('Unable to update PIN', error)
+      setChangePinError('We could not update the PIN. Try again on a modern browser.')
+    } finally {
+      setChangePinLoading(false)
+    }
+  }
+
   const totalPoints = useMemo(
     () => familyMembers.reduce((sum, member) => sum + member.points, 0),
     [familyMembers],
@@ -480,6 +659,133 @@ export default function SettingsScreen() {
     const totalCost = rewards.reduce((sum, reward) => sum + reward.cost, 0)
     return Math.round(totalCost / rewards.length)
   }, [rewards])
+
+  if (!isHydrated) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6 py-10 dark:bg-slate-950">
+        <p className="text-base font-medium text-slate-500 dark:text-slate-400">Loading settings…</p>
+      </main>
+    )
+  }
+
+  if (SHOULD_REQUIRE_SETTINGS_PIN && !isUnlocked) {
+    if (!settingsPin) {
+      return (
+        <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-6 py-16">
+          <div className="rounded-3xl border border-slate-200/70 bg-white/90 p-8 shadow-2xl dark:border-slate-700/70 dark:bg-slate-900/90">
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">Set a PIN for grown-up controls</h1>
+            <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              The settings area holds tools for parents and caregivers. Create a PIN so curious helpers need permission before they can make changes.
+            </p>
+            <form onSubmit={handleSetupPin} className="mt-8 space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Choose a PIN</label>
+                <input
+                  type="password"
+                  value={newPin}
+                  onChange={(event) => {
+                    setNewPin(event.target.value)
+                    setPinError('')
+                  }}
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  pattern="\d*"
+                  minLength={4}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="Enter at least 4 digits"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Confirm PIN</label>
+                <input
+                  type="password"
+                  value={confirmPin}
+                  onChange={(event) => {
+                    setConfirmPin(event.target.value)
+                    setPinError('')
+                  }}
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  pattern="\d*"
+                  minLength={4}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="Repeat your PIN"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Hint (optional)</label>
+                  <span className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Shown on lock screen</span>
+                </div>
+                <input
+                  type="text"
+                  value={pinHint}
+                  onChange={(event) => setPinHint(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="Something only the adults understand"
+                />
+              </div>
+              {pinError && (
+                <p className="text-sm font-medium text-rose-500 dark:text-rose-300">{pinError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={pinLoading}
+                className="w-full rounded-full bg-famboard-primary px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-famboard-dark focus:outline-none focus:ring-4 focus:ring-famboard-accent/40 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {pinLoading ? 'Saving PIN…' : 'Save PIN and continue'}
+              </button>
+            </form>
+          </div>
+        </main>
+      )
+    }
+
+    return (
+      <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-6 py-16">
+        <div className="rounded-3xl border border-slate-200/70 bg-white/90 p-8 shadow-2xl dark:border-slate-700/70 dark:bg-slate-900/90">
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">Enter PIN to unlock settings</h1>
+          <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            Only adults with the PIN can update chores, rewards, and family members. Once you unlock the settings you can stay signed in until you close this tab.
+          </p>
+          {settingsPin?.hint && (
+            <p className="mt-4 rounded-2xl bg-famboard-primary/10 px-4 py-3 text-sm text-famboard-primary dark:bg-sky-400/10 dark:text-sky-200">
+              Hint: {settingsPin.hint}
+            </p>
+          )}
+          <form onSubmit={handleVerifyPin} className="mt-8 space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">PIN</label>
+              <input
+                type="password"
+                value={pinEntry}
+                onChange={(event) => {
+                  setPinEntry(event.target.value)
+                  setPinError('')
+                }}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="\d*"
+                minLength={4}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                placeholder="Enter your PIN"
+              />
+            </div>
+            {pinError && (
+              <p className="text-sm font-medium text-rose-500 dark:text-rose-300">{pinError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={pinLoading}
+              className="w-full rounded-full bg-famboard-primary px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-famboard-dark focus:outline-none focus:ring-4 focus:ring-famboard-accent/40 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {pinLoading ? 'Checking…' : 'Unlock settings'}
+            </button>
+          </form>
+        </div>
+      </main>
+    )
+  }
 
   const handleAddMember = (event) => {
     event.preventDefault()
@@ -643,6 +949,132 @@ export default function SettingsScreen() {
             ))}
           </nav>
         </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-card dark:border-slate-700/70 dark:bg-slate-900/80">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2">
+            <h2 className="font-display text-2xl text-slate-900 dark:text-white">Settings lock</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Your PIN lives only on this device as a salted, hashed value. Update it whenever you need a fresh start.
+            </p>
+            {settingsPin?.hint && !showChangePin && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Current hint:{' '}
+                <span className="font-semibold text-slate-700 dark:text-slate-200">{settingsPin.hint}</span>
+              </p>
+            )}
+          </div>
+          {!showChangePin && (
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowChangePin(true)
+                  setChangePinError('')
+                }}
+                className="inline-flex items-center justify-center rounded-full bg-famboard-primary px-5 py-2 text-sm font-semibold text-white shadow transition hover:bg-famboard-dark focus:outline-none focus:ring-2 focus:ring-famboard-accent focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+              >
+                Change PIN
+              </button>
+            </div>
+          )}
+        </div>
+        {showChangePin && (
+          <form onSubmit={handleChangePin} className="mt-6 space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Current PIN</label>
+                <input
+                  type="password"
+                  value={changePinForm.current}
+                  onChange={(event) => {
+                    setChangePinForm((prev) => ({ ...prev, current: event.target.value }))
+                    setChangePinError('')
+                  }}
+                  inputMode="numeric"
+                  autoComplete="current-password"
+                  pattern="\d*"
+                  minLength={4}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="Enter current PIN"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">New PIN</label>
+                <input
+                  type="password"
+                  value={changePinForm.next}
+                  onChange={(event) => {
+                    setChangePinForm((prev) => ({ ...prev, next: event.target.value }))
+                    setChangePinError('')
+                  }}
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  pattern="\d*"
+                  minLength={4}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="At least 4 digits"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Confirm new PIN</label>
+                <input
+                  type="password"
+                  value={changePinForm.confirm}
+                  onChange={(event) => {
+                    setChangePinForm((prev) => ({ ...prev, confirm: event.target.value }))
+                    setChangePinError('')
+                  }}
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  pattern="\d*"
+                  minLength={4}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="Repeat the PIN"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Update hint (optional)</label>
+                  <span className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Shown when locked</span>
+                </div>
+                <input
+                  type="text"
+                  value={changePinForm.hint}
+                  onChange={(event) => {
+                    setChangePinForm((prev) => ({ ...prev, hint: event.target.value }))
+                    setChangePinError('')
+                  }}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="Optional hint to jog your memory"
+                />
+              </div>
+            </div>
+            {changePinError && (
+              <p className="text-sm font-medium text-rose-500 dark:text-rose-300">{changePinError}</p>
+            )}
+            <div className="flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowChangePin(false)
+                  setChangePinError('')
+                }}
+                className="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={changePinLoading}
+                className="rounded-full bg-famboard-primary px-5 py-2 text-sm font-semibold text-white shadow transition hover:bg-famboard-dark focus:outline-none focus:ring-2 focus:ring-famboard-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 dark:focus:ring-offset-slate-900"
+              >
+                {changePinLoading ? 'Updating…' : 'Save new PIN'}
+              </button>
+            </div>
+          </form>
+        )}
       </section>
 
       <section
