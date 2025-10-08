@@ -23,6 +23,7 @@ const defaultData = {
   theme: 'light',
   activeView: 'family',
   mediaLibrary: [],
+  settingsPin: null,
   familyMembers: [
     {
       id: 'member-1',
@@ -516,12 +517,23 @@ export function FamboardProvider({ children }) {
             familyMembers,
           }
         }),
+      setSettingsPin: (pinData) =>
+        setState((prev) => ({
+          ...prev,
+          settingsPin: pinData,
+        })),
+      clearSettingsPin: () =>
+        setState((prev) => ({
+          ...prev,
+          settingsPin: null,
+        })),
       resetAll: () =>
         setState((prev) => ({
           ...defaultData,
           theme: state.theme,
           activeView: 'family',
           mediaLibrary: prev.mediaLibrary,
+          settingsPin: prev.settingsPin,
         })),
     }),
     [state.theme],
