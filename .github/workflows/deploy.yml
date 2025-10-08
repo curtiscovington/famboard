@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -21,12 +21,32 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.19.0
           cache: npm
+
+      - name: Bump package version
+        if: github.actor != 'github-actions[bot]'
+        run: npm run bump:version
+
+      - name: Commit version bump
+        if: github.actor != 'github-actions[bot]'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "No version changes to commit."
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            git commit -m "chore: bump version to ${VERSION}"
+            git push
+          fi
 
       - name: Install dependencies
         run: npm ci

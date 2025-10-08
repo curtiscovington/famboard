@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bump:version": "node scripts/bump-version.js"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
