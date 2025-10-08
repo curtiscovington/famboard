@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
+    "idb": "^8.0.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3"

@@ -3,15 +3,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
+import { MediaPicker } from '../components/MediaPicker.jsx'
+import { MediaImage } from '../components/MediaImage.jsx'
 
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
 
 function MemberCard({ member, onSave, onRemove }) {
   const [name, setName] = useState(member.name)
+  const [imageId, setImageId] = useState(member.imageId ?? null)
   const [imageUrl, setImageUrl] = useState(member.imageUrl ?? '')
 
   useEffect(() => {
     setName(member.name)
+    setImageId(member.imageId ?? null)
     setImageUrl(member.imageUrl ?? '')
   }, [member])
 
@@ -19,6 +23,7 @@ function MemberCard({ member, onSave, onRemove }) {
     event.preventDefault()
     onSave(member.id, {
       name: name.trim() || member.name,
+      imageId,
       imageUrl: imageUrl.trim(),
     })
   }
@@ -26,18 +31,16 @@ function MemberCard({ member, onSave, onRemove }) {
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-5 shadow-sm transition hover:border-famboard-primary/60 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900/80">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-16 w-16 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-600 dark:bg-slate-800">
-            {imageUrl ? (
-              <img src={imageUrl} alt={member.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-2xl">👤</div>
-            )}
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Add a friendly face so kids can spot their card at a glance.
-          </p>
-        </div>
+        <MediaPicker
+          label="Profile photo"
+          description="Add a friendly face so kids can spot their card at a glance."
+          imageId={imageId}
+          imageUrl={imageUrl}
+          onChange={(next) => {
+            setImageId(next.imageId ?? null)
+            setImageUrl(next.imageUrl ?? '')
+          }}
+        />
         <div className="space-y-1">
           <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
             Family member name
@@ -47,20 +50,6 @@ function MemberCard({ member, onSave, onRemove }) {
             onChange={(event) => setName(event.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
           />
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-            Picture URL
-          </label>
-          <input
-            value={imageUrl}
-            onChange={(event) => setImageUrl(event.target.value)}
-            placeholder="https://..."
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-          />
-          <p className="text-xs text-slate-400 dark:text-slate-500">
-            Paste a link to a photo or illustration your kid loves.
-          </p>
         </div>
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Points: <span className="font-semibold text-famboard-primary dark:text-sky-300">{member.points}</span>
@@ -90,6 +79,7 @@ function RewardAdminCard({ reward, onSave, onRemove }) {
     title: reward.title,
     description: reward.description,
     cost: reward.cost,
+    imageId: reward.imageId ?? null,
     imageUrl: reward.imageUrl ?? '',
   })
 
@@ -98,6 +88,7 @@ function RewardAdminCard({ reward, onSave, onRemove }) {
       title: reward.title,
       description: reward.description,
       cost: reward.cost,
+      imageId: reward.imageId ?? null,
       imageUrl: reward.imageUrl ?? '',
     })
   }, [reward])
@@ -108,6 +99,7 @@ function RewardAdminCard({ reward, onSave, onRemove }) {
       title: form.title.trim() || reward.title,
       description: form.description.trim(),
       cost: Number(form.cost) || 0,
+      imageId: form.imageId ?? null,
       imageUrl: form.imageUrl.trim(),
     })
   }
@@ -115,18 +107,19 @@ function RewardAdminCard({ reward, onSave, onRemove }) {
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-5 shadow-sm transition hover:border-famboard-primary/60 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900/80">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-16 w-16 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-600 dark:bg-slate-800">
-            {form.imageUrl ? (
-              <img src={form.imageUrl} alt={form.title} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-2xl">🎁</div>
-            )}
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Visual rewards help non-readers understand the prize instantly.
-          </p>
-        </div>
+        <MediaPicker
+          label="Reward photo"
+          description="Visual rewards help non-readers understand the prize instantly."
+          imageId={form.imageId}
+          imageUrl={form.imageUrl}
+          onChange={(next) =>
+            setForm((prev) => ({
+              ...prev,
+              imageId: next.imageId ?? null,
+              imageUrl: next.imageUrl ?? '',
+            }))
+          }
+        />
         <div>
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Reward title
@@ -147,20 +140,6 @@ function RewardAdminCard({ reward, onSave, onRemove }) {
             className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
             rows={3}
           />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Picture URL
-          </label>
-          <input
-            value={form.imageUrl}
-            onChange={(event) => setForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
-            placeholder="https://..."
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-          />
-          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-            Use bright photos or icons to make the reward pop.
-          </p>
         </div>
         <div>
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -201,6 +180,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
     description: chore.description,
     assignedTo: chore.assignedTo ?? '',
     points: chore.points,
+    imageId: chore.imageId ?? null,
     imageUrl: chore.imageUrl ?? '',
   })
 
@@ -210,6 +190,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
       description: chore.description,
       assignedTo: chore.assignedTo ?? '',
       points: chore.points,
+      imageId: chore.imageId ?? null,
       imageUrl: chore.imageUrl ?? '',
     })
   }, [chore])
@@ -223,6 +204,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
       description: form.description.trim(),
       assignedTo: form.assignedTo || null,
       points: Number(form.points) || 0,
+      imageId: form.imageId ?? null,
       imageUrl: form.imageUrl.trim(),
     })
     setIsEditing(false)
@@ -232,18 +214,19 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
     <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-5 shadow-sm transition hover:border-famboard-primary/60 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900/80">
       {isEditing ? (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="h-16 w-16 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-600 dark:bg-slate-800">
-              {form.imageUrl ? (
-                <img src={form.imageUrl} alt={form.title} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-2xl">🧹</div>
-              )}
-            </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Update the title, picture, or assignment for this chore.
-            </p>
-          </div>
+          <MediaPicker
+            label="Chore photo"
+            description="Update the title, picture, or assignment for this chore."
+            imageId={form.imageId}
+            imageUrl={form.imageUrl}
+            onChange={(next) =>
+              setForm((prev) => ({
+                ...prev,
+                imageId: next.imageId ?? null,
+                imageUrl: next.imageUrl ?? '',
+              }))
+            }
+          />
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Chore title</label>
             <input
@@ -288,15 +271,6 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
               />
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Picture URL</label>
-            <input
-              value={form.imageUrl}
-              onChange={(event) => setForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
-              placeholder="https://..."
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-            />
-          </div>
           <div className="flex flex-wrap gap-3">
             <button
               type="submit"
@@ -317,7 +291,14 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
         <div className="space-y-4">
           <div className="flex items-start gap-4">
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
-              {chore.imageUrl ? (
+              {chore.imageId ? (
+                <MediaImage
+                  mediaId={chore.imageId}
+                  alt={chore.title}
+                  className="h-full w-full object-cover"
+                  fallback={<div className="flex h-full w-full items-center justify-center text-3xl">🧽</div>}
+                />
+              ) : chore.imageUrl ? (
                 <img src={chore.imageUrl} alt={chore.title} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-3xl">🧽</div>
@@ -375,11 +356,13 @@ export default function SettingsScreen() {
   } = useFamboard()
   const { familyMembers, rewards, chores, theme } = state
   const [memberName, setMemberName] = useState('')
-  const [memberImage, setMemberImage] = useState('')
+  const [memberImageUrl, setMemberImageUrl] = useState('')
+  const [memberImageId, setMemberImageId] = useState(null)
   const [rewardForm, setRewardForm] = useState({
     title: '',
     description: '',
     cost: 20,
+    imageId: null,
     imageUrl: '',
   })
   const [choreForm, setChoreForm] = useState({
@@ -387,6 +370,7 @@ export default function SettingsScreen() {
     description: '',
     assignedTo: '',
     points: 10,
+    imageId: null,
     imageUrl: '',
   })
 
@@ -404,9 +388,14 @@ export default function SettingsScreen() {
   const handleAddMember = (event) => {
     event.preventDefault()
     if (!memberName.trim()) return
-    addFamilyMember({ name: memberName.trim(), imageUrl: memberImage.trim() })
+    addFamilyMember({
+      name: memberName.trim(),
+      imageId: memberImageId,
+      imageUrl: memberImageUrl.trim(),
+    })
     setMemberName('')
-    setMemberImage('')
+    setMemberImageId(null)
+    setMemberImageUrl('')
   }
 
   const handleRemove = (id) => {
@@ -440,9 +429,10 @@ export default function SettingsScreen() {
       title: rewardForm.title.trim(),
       description: rewardForm.description.trim(),
       cost: Number(rewardForm.cost) || 0,
+      imageId: rewardForm.imageId ?? null,
       imageUrl: rewardForm.imageUrl.trim(),
     })
-    setRewardForm({ title: '', description: '', cost: 20, imageUrl: '' })
+    setRewardForm({ title: '', description: '', cost: 20, imageId: null, imageUrl: '' })
   }
 
   const handleCreateChore = (event) => {
@@ -453,9 +443,17 @@ export default function SettingsScreen() {
       description: choreForm.description.trim(),
       assignedTo: choreForm.assignedTo || null,
       points: Number(choreForm.points) || 0,
+      imageId: choreForm.imageId ?? null,
       imageUrl: choreForm.imageUrl.trim(),
     })
-    setChoreForm({ title: '', description: '', assignedTo: '', points: 10, imageUrl: '' })
+    setChoreForm({
+      title: '',
+      description: '',
+      assignedTo: '',
+      points: 10,
+      imageId: null,
+      imageUrl: '',
+    })
   }
 
   const handleRemoveChore = (id) => {
@@ -526,7 +524,7 @@ export default function SettingsScreen() {
             Team management
           </span>
         </header>
-        <form onSubmit={handleAddMember} className="mt-6 grid gap-4 md:grid-cols-[2fr_2fr_1fr]">
+        <form onSubmit={handleAddMember} className="mt-6 grid gap-4 md:grid-cols-[2fr_3fr_1fr]">
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
               New family member
@@ -538,19 +536,17 @@ export default function SettingsScreen() {
               placeholder="Add a name"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Picture URL
-            </label>
-            <input
-              value={memberImage}
-              onChange={(event) => setMemberImage(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-              placeholder="https://..."
+          <div className="md:col-span-1">
+            <MediaPicker
+              label="Photo"
+              description="Optional: add a photo or favorite character for quick recognition."
+              imageId={memberImageId}
+              imageUrl={memberImageUrl}
+              onChange={(next) => {
+                setMemberImageId(next.imageId ?? null)
+                setMemberImageUrl(next.imageUrl ?? '')
+              }}
             />
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              Optional: add a photo or favorite character for quick recognition.
-            </p>
           </div>
           <button
             type="submit"
@@ -603,15 +599,20 @@ export default function SettingsScreen() {
               placeholder="List the steps so everyone knows what finished looks like."
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Picture URL</label>
-            <input
-              value={choreForm.imageUrl}
-              onChange={(event) => setChoreForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-              placeholder="https://..."
+          <div className="md:col-span-2">
+            <MediaPicker
+              label="Chore photo"
+              description="Add a helpful visual so kids recognize the task."
+              imageId={choreForm.imageId}
+              imageUrl={choreForm.imageUrl}
+              onChange={(next) =>
+                setChoreForm((prev) => ({
+                  ...prev,
+                  imageId: next.imageId ?? null,
+                  imageUrl: next.imageUrl ?? '',
+                }))
+              }
             />
-            <p className="text-xs text-slate-400 dark:text-slate-500">Add a helpful visual so kids recognize the task.</p>
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Assign to</label>
@@ -690,17 +691,20 @@ export default function SettingsScreen() {
               placeholder="Add the cozy details or rules that make this reward special."
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Picture URL</label>
-            <input
-              value={rewardForm.imageUrl}
-              onChange={(event) => setRewardForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-              placeholder="https://..."
+          <div className="md:col-span-2">
+            <MediaPicker
+              label="Reward photo"
+              description="Show what the reward looks like so little ones know what they are earning."
+              imageId={rewardForm.imageId}
+              imageUrl={rewardForm.imageUrl}
+              onChange={(next) =>
+                setRewardForm((prev) => ({
+                  ...prev,
+                  imageId: next.imageId ?? null,
+                  imageUrl: next.imageUrl ?? '',
+                }))
+              }
             />
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              Show what the reward looks like so little ones know what they are earning.
-            </p>
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Cost (points)</label>
