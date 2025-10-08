@@ -37,8 +37,8 @@ export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChor
   const range = useMemo(() => computeRange(activeView, focusDate), [activeView, focusDate])
   const daysInRange = useMemo(() => createDateRange(range.start, range.end), [range.start, range.end])
   const occurrenceMap = useMemo(
-    () => buildOccurrenceMap(chores, range.start, range.end),
-    [chores, range.start, range.end],
+    () => buildOccurrenceMap(chores, familyMembers, range.start, range.end),
+    [chores, familyMembers, range.start, range.end],
   )
 
   const focusKey = getDateKey(focusDate)
@@ -417,7 +417,7 @@ function formatRangeLabel(view, focusDate, range) {
   return formatDateLabel(focusDate, { month: 'long', year: 'numeric' })
 }
 
-function buildOccurrenceMap(chores, rangeStart, rangeEnd) {
+function buildOccurrenceMap(chores, familyMembers, rangeStart, rangeEnd) {
   const map = new Map()
   const start = startOfDay(rangeStart).getTime()
   const end = startOfDay(rangeEnd).getTime()
@@ -426,17 +426,42 @@ function buildOccurrenceMap(chores, rangeStart, rangeEnd) {
     map.set(key, [])
   }
 
+  const rotationOrder = Array.isArray(familyMembers)
+    ? familyMembers.map((member) => member.id).filter(Boolean)
+    : []
+
   chores.forEach((chore) => {
     const anchor = startOfDay(chore?.schedule?.anchorDate ?? new Date())
     const recurrence = chore?.recurrence ?? 'none'
+    const occurrenceDates = []
+
     for (let time = start; time <= end; time += DAY_MS) {
       const date = new Date(time)
       if (!occursOnDate(anchor, recurrence, date)) continue
+      occurrenceDates.push(date)
+    }
+
+    if (occurrenceDates.length === 0) {
+      return
+    }
+
+    const assignments = chore.rotateAssignment
+      ? computeRotationAssignments({
+          dates: occurrenceDates,
+          currentAssignedId: chore.assignedTo ?? null,
+          rotationOrder,
+          anchorDate: anchor,
+          recurrence,
+        })
+      : null
+
+    occurrenceDates.forEach((date, index) => {
       const key = getDateKey(date)
       const existing = map.get(key)
-      if (!existing) continue
-      existing.push(createOccurrence(chore, date))
-    }
+      if (!existing) return
+      const assignedTo = assignments ? assignments[index] : chore.assignedTo ?? null
+      existing.push(createOccurrence(chore, date, assignedTo))
+    })
   })
 
   Array.from(map.entries()).forEach(([key, events]) => {
@@ -445,6 +470,96 @@ function buildOccurrenceMap(chores, rangeStart, rangeEnd) {
   })
 
   return map
+}
+
+function computeRotationAssignments({
+  dates,
+  currentAssignedId,
+  rotationOrder,
+  anchorDate,
+  recurrence,
+}) {
+  if (!Array.isArray(dates) || dates.length === 0) return []
+  if (!Array.isArray(rotationOrder) || rotationOrder.length === 0) {
+    return dates.map(() => null)
+  }
+
+  const normalizedAnchor = startOfDay(anchorDate ?? new Date())
+  let currentIndex = rotationOrder.indexOf(currentAssignedId)
+  if (currentIndex === -1) {
+    currentIndex = 0
+  }
+
+  const today = startOfDay(new Date())
+  let referenceDate = findOccurrenceOnOrBefore(normalizedAnchor, recurrence, today)
+  if (!referenceDate) {
+    referenceDate = findOccurrenceOnOrAfter(normalizedAnchor, recurrence, today)
+  }
+  if (!referenceDate) {
+    referenceDate = dates[0]
+  }
+
+  return dates.map((date) => {
+    const occurrenceDelta = countOccurrenceSteps(normalizedAnchor, recurrence, referenceDate, date)
+    const memberIndex = wrapRotationIndex(currentIndex + occurrenceDelta, rotationOrder.length)
+    return rotationOrder[memberIndex] ?? null
+  })
+}
+
+function wrapRotationIndex(value, length) {
+  if (length === 0) return 0
+  const result = value % length
+  return result < 0 ? result + length : result
+}
+
+function findOccurrenceOnOrBefore(anchor, recurrence, target) {
+  const normalizedTarget = startOfDay(target)
+  const minimum = startOfDay(anchor)
+  const guardLimit = 366 * 10
+
+  let cursor = normalizedTarget
+  for (let steps = 0; steps <= guardLimit && cursor.getTime() >= minimum.getTime(); steps += 1) {
+    if (occursOnDate(anchor, recurrence, cursor)) {
+      return cursor
+    }
+    cursor = addDays(cursor, -1)
+  }
+  return null
+}
+
+function findOccurrenceOnOrAfter(anchor, recurrence, target) {
+  const normalizedTarget = startOfDay(target)
+  const guardLimit = 366 * 10
+
+  let cursor = normalizedTarget
+  for (let steps = 0; steps <= guardLimit; steps += 1) {
+    if (occursOnDate(anchor, recurrence, cursor)) {
+      return cursor
+    }
+    cursor = addDays(cursor, 1)
+  }
+  return null
+}
+
+function countOccurrenceSteps(anchor, recurrence, fromDate, toDate) {
+  if (isSameDay(fromDate, toDate)) return 0
+
+  const direction = toDate.getTime() > fromDate.getTime() ? 1 : -1
+  let cursor = fromDate
+  let steps = 0
+  const guardLimit = 366 * 10
+
+  for (let guard = 0; guard <= guardLimit; guard += 1) {
+    cursor = addDays(cursor, direction)
+    if (occursOnDate(anchor, recurrence, cursor)) {
+      steps += direction
+    }
+    if (isSameDay(cursor, toDate)) {
+      return steps
+    }
+  }
+
+  return steps
 }
 
 function occursOnDate(anchor, recurrence, date) {
@@ -478,7 +593,7 @@ function occursOnDate(anchor, recurrence, date) {
   }
 }
 
-function createOccurrence(chore, date) {
+function createOccurrence(chore, date, assignedTo) {
   const dateKey = getDateKey(date)
   const isToday = isSameDay(date, new Date())
   return {
@@ -488,7 +603,7 @@ function createOccurrence(chore, date) {
     description: chore.description ?? '',
     date,
     dateKey,
-    assignedTo: chore.assignedTo ?? null,
+    assignedTo: assignedTo ?? null,
     points: chore.points ?? 0,
     recurrence: chore.recurrence ?? 'none',
     isCompletedToday: Boolean(chore.completed && isToday),
