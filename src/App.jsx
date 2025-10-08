@@ -4,6 +4,7 @@ import HomeScreen from './pages/HomeScreen.jsx'
 import ChoresScreen from './pages/ChoresScreen.jsx'
 import RewardsScreen from './pages/RewardsScreen.jsx'
 import SettingsScreen from './pages/SettingsScreen.jsx'
+import { MediaImage } from './components/MediaImage.jsx'
 import { useFamboard } from './context/FamboardContext.jsx'
 
 const navigation = [
@@ -34,6 +35,11 @@ function UserSwitcher() {
   const activeMember = useMemo(
     () => (activeView === 'family' ? null : familyMembers.find((member) => member.id === activeView) ?? null),
     [activeView, familyMembers],
+  )
+
+  const activeMemberInitial = activeMember?.name ? activeMember.name.charAt(0).toUpperCase() : '🙂'
+  const activeMemberFallback = (
+    <div className="flex h-full w-full items-center justify-center text-2xl font-semibold">{activeMemberInitial}</div>
   )
 
   const getMemberChoreCount = (memberId) =>
@@ -76,12 +82,17 @@ function UserSwitcher() {
               aria-hidden
             >
               {activeMember ? (
-                activeMember.imageUrl ? (
-                  <img src={activeMember.imageUrl} alt="" className="h-full w-full object-cover" />
+                activeMember.imageId ? (
+                  <MediaImage
+                    mediaId={activeMember.imageId}
+                    alt={activeMember.name ?? ''}
+                    className="h-full w-full object-cover"
+                    fallback={activeMemberFallback}
+                  />
+                ) : activeMember.imageUrl ? (
+                  <img src={activeMember.imageUrl} alt={activeMember.name ?? ''} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-2xl font-semibold">
-                    {activeMember.name ? activeMember.name.charAt(0).toUpperCase() : '🙂'}
-                  </span>
+                  activeMemberFallback
                 )
               ) : (
                 '👨‍👩‍👧‍👦'
@@ -134,6 +145,11 @@ function UserSwitcher() {
               const upcoming = getMemberChoreCount(member.id)
               const isActive = activeView === member.id
               const initial = member.name ? member.name.charAt(0).toUpperCase() : '🙂'
+              const fallback = (
+                <div className="flex h-full w-full items-center justify-center text-base font-semibold text-slate-500 dark:text-slate-300">
+                  {initial}
+                </div>
+              )
               return (
                 <button
                   type="button"
@@ -148,12 +164,17 @@ function UserSwitcher() {
                   }`}
                 >
                   <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/60 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
-                    {member.imageUrl ? (
-                      <img src={member.imageUrl} alt="" className="h-full w-full object-cover" />
+                    {member.imageId ? (
+                      <MediaImage
+                        mediaId={member.imageId}
+                        alt={member.name ?? ''}
+                        className="h-full w-full object-cover"
+                        fallback={fallback}
+                      />
+                    ) : member.imageUrl ? (
+                      <img src={member.imageUrl} alt={member.name ?? ''} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-base font-semibold text-slate-500 dark:text-slate-300">
-                        {initial}
-                      </div>
+                      fallback
                     )}
                   </div>
                   <div>
