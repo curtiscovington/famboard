@@ -27,6 +27,8 @@ npm run dev
 
 The app is optimized for tablets, but it scales down nicely in a regular desktop browser window. You can install it locally by clicking the “Install” option in supported browsers once the dev server is running.
 
+> Requires Node.js 20.19.0 or newer. With `nvm`, run `nvm install 20.19.0 && nvm use` before installing dependencies.
+
 ## Building for production
 
 ```
@@ -35,6 +37,13 @@ npm run preview
 ```
 
 When deploying to GitHub Pages, the configured base path (`/famboard/`) ensures the compiled assets, manifest, and service worker resolve correctly.
+
+## Deploying to GitHub Pages
+
+- The workflow defined in `.github/workflows/deploy.yml` builds the site and publishes the `dist/` output to GitHub Pages.
+- In the repository settings, set **Pages → Source** to **GitHub Actions** the first time you enable Pages for this project.
+- Push changes to the `main` branch (or run the workflow manually) to trigger a fresh deployment.
+- If you fork the project under a different repository name, update `vite.config.js` so the `base` option matches the new repository slug.
 
 ## Project structure highlights
 
