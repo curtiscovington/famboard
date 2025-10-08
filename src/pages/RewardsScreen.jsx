@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
+import { MediaPicker } from '../components/MediaPicker.jsx'
+import { MediaImage } from '../components/MediaImage.jsx'
 
 function RewardCard({ reward, members, onRedeem, onDelete, onSave, canManage = true }) {
   const [selectedMember, setSelectedMember] = useState(members[0]?.id ?? '')
@@ -9,6 +11,7 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave, canManage = t
     title: reward.title,
     description: reward.description,
     cost: reward.cost,
+    imageId: reward.imageId ?? null,
     imageUrl: reward.imageUrl ?? '',
   })
 
@@ -28,6 +31,7 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave, canManage = t
       title: reward.title,
       description: reward.description,
       cost: reward.cost,
+      imageId: reward.imageId ?? null,
       imageUrl: reward.imageUrl ?? '',
     })
   }, [reward])
@@ -58,6 +62,7 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave, canManage = t
       title: form.title.trim(),
       description: form.description.trim(),
       cost: Number(form.cost) || 0,
+      imageId: form.imageId ?? null,
       imageUrl: form.imageUrl.trim(),
     })
     setIsEditing(false)
@@ -68,18 +73,19 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave, canManage = t
       <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-famboard-primary/10 blur-2xl transition group-hover:bg-famboard-primary/20" aria-hidden />
       {isEditing && canManage ? (
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="flex items-center gap-3">
-            <div className="h-20 w-20 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
-              {form.imageUrl ? (
-                <img src={form.imageUrl} alt={form.title} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-3xl">🎉</div>
-              )}
-            </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Add a picture so kids can cheer for this reward instantly.
-            </p>
-          </div>
+          <MediaPicker
+            label="Reward photo"
+            description="Add a picture so kids can cheer for this reward instantly."
+            imageId={form.imageId}
+            imageUrl={form.imageUrl}
+            onChange={(next) =>
+              setForm((prev) => ({
+                ...prev,
+                imageId: next.imageId ?? null,
+                imageUrl: next.imageUrl ?? '',
+              }))
+            }
+          />
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
               Reward title
@@ -101,20 +107,6 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave, canManage = t
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
               rows={3}
             />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Picture URL
-            </label>
-            <input
-              value={form.imageUrl}
-              onChange={(event) => setForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
-              placeholder="https://..."
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-            />
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              Use a photo or drawing that shows the reward.
-            </p>
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
@@ -148,7 +140,14 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave, canManage = t
         <div className="space-y-4">
           <div className="flex items-start gap-4">
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
-              {reward.imageUrl ? (
+              {reward.imageId ? (
+                <MediaImage
+                  mediaId={reward.imageId}
+                  alt={reward.title}
+                  className="h-full w-full object-cover"
+                  fallback={<div className="flex h-full w-full items-center justify-center text-3xl">🎁</div>}
+                />
+              ) : reward.imageUrl ? (
                 <img src={reward.imageUrl} alt={reward.title} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-3xl">🎁</div>

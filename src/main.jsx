@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import { FamboardProvider } from './context/FamboardContext.jsx'
+import { MediaLibraryProvider } from './context/MediaLibraryContext.jsx'
 
 const REDIRECT_STORAGE_KEY = 'famboard-redirect'
 
@@ -111,7 +112,9 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <FamboardProvider>
-        <App />
+        <MediaLibraryProvider>
+          <App />
+        </MediaLibraryProvider>
       </FamboardProvider>
     </BrowserRouter>
   </StrictMode>,
