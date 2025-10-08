@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
 import { MediaPicker } from '../components/MediaPicker.jsx'
 import { MediaImage } from '../components/MediaImage.jsx'
+import { ChoreCalendar } from '../components/ChoreCalendar.jsx'
 import { launchConfetti } from '../utils/confetti.js'
 import { getRecurrenceLabel, RECURRENCE_OPTIONS } from '../utils/recurrence.js'
+import {
+  formatDateForInput,
+  formatDateLabel,
+  parseInputDateToISO,
+  toStartOfDayISOString,
+} from '../utils/date.js'
 
 function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage = true }) {
   const [isEditing, setIsEditing] = useState(false)
@@ -17,6 +24,7 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
     imageUrl: chore.imageUrl ?? '',
     recurrence: chore.recurrence ?? 'none',
     rotateAssignment: Boolean(chore.rotateAssignment),
+    scheduleAnchor: formatDateForInput(chore.schedule?.anchorDate ?? toStartOfDayISOString(new Date())),
   })
 
   useEffect(() => {
@@ -29,6 +37,7 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
       imageUrl: chore.imageUrl ?? '',
       recurrence: chore.recurrence ?? 'none',
       rotateAssignment: Boolean(chore.rotateAssignment),
+      scheduleAnchor: formatDateForInput(chore.schedule?.anchorDate ?? toStartOfDayISOString(new Date())),
     })
   }, [chore])
 
@@ -51,6 +60,10 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
       imageUrl: form.imageUrl.trim(),
       recurrence: form.recurrence,
       rotateAssignment: form.rotateAssignment,
+      schedule: {
+        anchorDate: parseInputDateToISO(form.scheduleAnchor, chore.schedule?.anchorDate),
+        allDay: true,
+      },
     })
     setIsEditing(false)
   }
@@ -173,6 +186,23 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
                 <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
               )}
             </div>
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Starts on</label>
+              <input
+                type="date"
+                value={form.scheduleAnchor}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    scheduleAnchor: event.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              />
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Use the anchor date to keep this chore synced with shared calendars in the future.
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-3 pt-2">
             <button
@@ -236,6 +266,9 @@ function ChoreCard({ chore, familyMembers, onToggle, onDelete, onSave, canManage
               </span>
             )}
           </div>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Starts {formatDateLabel(chore.schedule?.anchorDate, { month: 'short', day: 'numeric', year: 'numeric' }) || 'soon'}
+          </p>
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleToggle}
@@ -287,6 +320,10 @@ export default function ChoresScreen() {
     return chores.filter(
       (chore) => chore.completed && (!isMemberView || chore.assignedTo === selectedMember.id),
     )
+  }, [chores, isMemberView, selectedMember?.id])
+
+  const visibleChores = useMemo(() => {
+    return chores.filter((chore) => !isMemberView || chore.assignedTo === selectedMember.id)
   }, [chores, isMemberView, selectedMember?.id])
 
   const totalPointsInRewards = useMemo(
@@ -388,6 +425,9 @@ export default function ChoresScreen() {
       </section>
 
       <section className="space-y-6">
+        <div className="rounded-3xl bg-white/85 p-6 shadow-card ring-1 ring-white/30 backdrop-blur dark:bg-slate-900/75 dark:ring-slate-800">
+          <ChoreCalendar chores={visibleChores} familyMembers={familyMembers} focusMember={selectedMember} />
+        </div>
         <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="font-display text-3xl text-slate-800 dark:text-white">Chore board</h2>

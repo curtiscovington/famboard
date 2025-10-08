@@ -1,10 +1,23 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { toStartOfDayISOString } from '../utils/date.js'
 import {
   calculateNextResetTimestamp,
   getNextRotationAssignee,
 } from '../utils/recurrence.js'
 
 const STORAGE_KEY = 'famboard-state-v1'
+
+const withSchedule = (chore) => {
+  const anchor = chore?.schedule?.anchorDate
+  const resolvedAnchor = anchor ? toStartOfDayISOString(anchor) : toStartOfDayISOString(new Date())
+  return {
+    ...chore,
+    schedule: {
+      anchorDate: resolvedAnchor,
+      allDay: chore?.schedule?.allDay ?? true,
+    },
+  }
+}
 
 const defaultData = {
   theme: 'light',
@@ -34,7 +47,7 @@ const defaultData = {
     },
   ],
   chores: [
-    {
+    withSchedule({
       id: 'chore-1',
       title: 'Clear the dinner table',
       description: 'Tidy up after meals and wipe the table clean.',
@@ -46,8 +59,8 @@ const defaultData = {
       imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
       recurrence: 'daily',
       rotateAssignment: false,
-    },
-    {
+    }),
+    withSchedule({
       id: 'chore-2',
       title: 'Feed the pets',
       description: 'Fresh water and food for the pets before school.',
@@ -59,8 +72,8 @@ const defaultData = {
       imageUrl: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=200&q=80',
       recurrence: 'weekdays',
       rotateAssignment: true,
-    },
-    {
+    }),
+    withSchedule({
       id: 'chore-3',
       title: 'Laundry helper',
       description: 'Sort colors and help fold clothes.',
@@ -72,7 +85,7 @@ const defaultData = {
       imageUrl: 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=200&q=80',
       recurrence: 'weekly',
       rotateAssignment: false,
-    },
+    }),
   ],
   rewards: [
     {
@@ -164,7 +177,13 @@ export function FamboardProvider({ children }) {
       const stored = window.localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
-        setState((current) => ({ ...current, ...parsed }))
+        setState((current) => ({
+          ...current,
+          ...parsed,
+          chores: Array.isArray(parsed?.chores)
+            ? parsed.chores.map((chore) => withSchedule(chore))
+            : current.chores,
+        }))
       }
     } catch (error) {
       console.warn('Unable to read Famboard data from storage', error)
@@ -297,7 +316,7 @@ export function FamboardProvider({ children }) {
           ...prev,
           chores: [
             ...prev.chores,
-            {
+            withSchedule({
               id: createId('chore'),
               title: payload.title,
               description: payload.description,
@@ -311,7 +330,8 @@ export function FamboardProvider({ children }) {
               imageUrl: payload.imageUrl ?? '',
               recurrence: payload.recurrence ?? 'none',
               rotateAssignment: Boolean(payload.rotateAssignment),
-            },
+              schedule: payload.schedule,
+            }),
           ],
         })),
       updateChore: (id, updates) =>
@@ -338,7 +358,7 @@ export function FamboardProvider({ children }) {
 
           const updatedChores = prev.chores.map((chore) =>
             chore.id === id
-              ? {
+              ? withSchedule({
                   ...chore,
                   ...updates,
                   assignedTo: nextAssigned ?? null,
@@ -347,7 +367,8 @@ export function FamboardProvider({ children }) {
                   imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : chore.imageUrl,
                   recurrence: nextRecurrence,
                   rotateAssignment: nextRotateAssignment,
-                }
+                  schedule: updates.schedule ?? chore.schedule,
+                })
               : chore,
           )
 
