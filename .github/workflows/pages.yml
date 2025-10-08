@@ -2,8 +2,8 @@ name: Build and Deploy to GitHub Pages
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -18,46 +18,26 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    outputs:
-      should_deploy: ${{ steps.verify.outputs.on_main }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Verify tag points to main
-        id: verify
-        run: |
-          git fetch origin main
-          if git merge-base --is-ancestor origin/main "$GITHUB_SHA"; then
-            echo "on_main=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Tag $GITHUB_REF_NAME is not pointing at a commit on main. Skipping deployment." >> "$GITHUB_STEP_SUMMARY"
-            echo "on_main=false" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Setup Pages
-        if: steps.verify.outputs.on_main == 'true'
         uses: actions/configure-pages@v5
 
       - name: Setup Node.js
-        if: steps.verify.outputs.on_main == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20.19.0'
           cache: npm
 
       - name: Install dependencies
-        if: steps.verify.outputs.on_main == 'true'
         run: npm ci
 
       - name: Build site
-        if: steps.verify.outputs.on_main == 'true'
         run: npm run build
 
       - name: Upload artifact
-        if: steps.verify.outputs.on_main == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -65,7 +45,6 @@ jobs:
   deploy:
     name: Deploy
     needs: build
-    if: needs.build.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
