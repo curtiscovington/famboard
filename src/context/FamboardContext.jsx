@@ -5,9 +5,24 @@ const STORAGE_KEY = 'famboard-state-v1'
 const defaultData = {
   theme: 'light',
   familyMembers: [
-    { id: 'member-1', name: 'Alex', points: 0 },
-    { id: 'member-2', name: 'Jamie', points: 0 },
-    { id: 'member-3', name: 'Riley', points: 0 },
+    {
+      id: 'member-1',
+      name: 'Alex',
+      points: 0,
+      imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=160&q=80',
+    },
+    {
+      id: 'member-2',
+      name: 'Jamie',
+      points: 0,
+      imageUrl: 'https://images.unsplash.com/photo-1520719627573-5e2c1a6610f0?auto=format&fit=crop&w=160&q=80',
+    },
+    {
+      id: 'member-3',
+      name: 'Riley',
+      points: 0,
+      imageUrl: 'https://images.unsplash.com/photo-1445633883498-7f9922d37a3d?auto=format&fit=crop&w=160&q=80',
+    },
   ],
   chores: [
     {
@@ -18,6 +33,7 @@ const defaultData = {
       points: 10,
       completed: false,
       completedAt: null,
+      imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
     },
     {
       id: 'chore-2',
@@ -27,6 +43,7 @@ const defaultData = {
       points: 8,
       completed: false,
       completedAt: null,
+      imageUrl: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=200&q=80',
     },
     {
       id: 'chore-3',
@@ -36,6 +53,7 @@ const defaultData = {
       points: 12,
       completed: false,
       completedAt: null,
+      imageUrl: 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=200&q=80',
     },
   ],
   rewards: [
@@ -44,18 +62,21 @@ const defaultData = {
       title: 'Pick the family movie',
       description: 'Choose the movie for Friday movie night.',
       cost: 30,
+      imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=200&q=80',
     },
     {
       id: 'reward-2',
       title: 'Extra 30 minutes of screen time',
       description: 'Enjoy more tablet or console time.',
       cost: 45,
+      imageUrl: 'https://images.unsplash.com/photo-1486578077620-8a022ddd481f?auto=format&fit=crop&w=200&q=80',
     },
     {
       id: 'reward-3',
       title: 'Choose dinner',
       description: 'Decide what the family will have for dinner.',
       cost: 60,
+      imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
     },
   ],
 }
@@ -104,12 +125,17 @@ export function FamboardProvider({ children }) {
           ...prev,
           theme,
         })),
-      addFamilyMember: (name) =>
+      addFamilyMember: (payload) =>
         setState((prev) => ({
           ...prev,
           familyMembers: [
             ...prev.familyMembers,
-            { id: createId('member'), name, points: 0 },
+            {
+              id: createId('member'),
+              name: payload.name,
+              points: 0,
+              imageUrl: payload.imageUrl ?? '',
+            },
           ],
         })),
       updateFamilyMember: (id, updates) =>
@@ -140,6 +166,7 @@ export function FamboardProvider({ children }) {
               points: Math.max(Number(payload.points) || 0, 0),
               completed: false,
               completedAt: null,
+              imageUrl: payload.imageUrl ?? '',
             },
           ],
         })),
@@ -162,6 +189,7 @@ export function FamboardProvider({ children }) {
                   ...updates,
                   assignedTo: nextAssigned ?? null,
                   points: nextPoints,
+                  imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : chore.imageUrl,
                 }
               : chore,
           )
@@ -264,6 +292,7 @@ export function FamboardProvider({ children }) {
               title: payload.title,
               description: payload.description,
               cost: Math.max(Number(payload.cost) || 0, 0),
+              imageUrl: payload.imageUrl ?? '',
             },
           ],
         })),
@@ -279,6 +308,7 @@ export function FamboardProvider({ children }) {
                     updates.cost !== undefined
                       ? Math.max(Number(updates.cost) || 0, 0)
                       : reward.cost,
+                  imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : reward.imageUrl,
                 }
               : reward,
           ),

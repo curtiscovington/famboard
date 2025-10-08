@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
 
 function RewardCard({ reward, members, onRedeem, onDelete, onSave }) {
@@ -8,13 +9,26 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave }) {
     title: reward.title,
     description: reward.description,
     cost: reward.cost,
+    imageUrl: reward.imageUrl ?? '',
   })
+
+  const selectedMemberData = useMemo(
+    () => members.find((member) => member.id === selectedMember),
+    [members, selectedMember],
+  )
+
+  const progress = useMemo(() => {
+    if (!selectedMemberData) return 0
+    if (reward.cost === 0) return 100
+    return Math.min(100, Math.round((selectedMemberData.points / reward.cost) * 100))
+  }, [reward.cost, selectedMemberData])
 
   useEffect(() => {
     setForm({
       title: reward.title,
       description: reward.description,
       cost: reward.cost,
+      imageUrl: reward.imageUrl ?? '',
     })
   }, [reward])
 
@@ -38,14 +52,28 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave }) {
       title: form.title.trim(),
       description: form.description.trim(),
       cost: Number(form.cost) || 0,
+      imageUrl: form.imageUrl.trim(),
     })
     setIsEditing(false)
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-5 shadow-sm transition hover:border-famboard-primary/60 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900/80">
+    <div className="group relative overflow-hidden rounded-3xl border border-transparent bg-white/90 p-6 shadow-card transition hover:border-famboard-primary/40 hover:shadow-xl dark:bg-slate-900/80">
+      <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-famboard-primary/10 blur-2xl transition group-hover:bg-famboard-primary/20" aria-hidden />
       {isEditing ? (
-        <form className="space-y-3" onSubmit={handleSubmit}>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="flex items-center gap-3">
+            <div className="h-20 w-20 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
+              {form.imageUrl ? (
+                <img src={form.imageUrl} alt={form.title} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-3xl">🎉</div>
+              )}
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Add a picture so kids can cheer for this reward instantly.
+            </p>
+          </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
               Reward title
@@ -54,7 +82,7 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave }) {
               required
               value={form.title}
               onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
             />
           </div>
           <div className="space-y-1">
@@ -64,9 +92,23 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave }) {
             <textarea
               value={form.description}
               onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
               rows={3}
             />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+              Picture URL
+            </label>
+            <input
+              value={form.imageUrl}
+              onChange={(event) => setForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
+              placeholder="https://..."
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            />
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Use a photo or drawing that shows the reward.
+            </p>
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
@@ -77,7 +119,7 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave }) {
               min="0"
               value={form.cost}
               onChange={(event) => setForm((prev) => ({ ...prev, cost: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
             />
           </div>
           <div className="flex flex-wrap gap-3 pt-2">
@@ -98,18 +140,29 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave }) {
         </form>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-white">
-                {reward.title}
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {reward.description || 'Add a fun description to get everyone excited!'}
-              </p>
+          <div className="flex items-start gap-4">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
+              {reward.imageUrl ? (
+                <img src={reward.imageUrl} alt={reward.title} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-3xl">🎁</div>
+              )}
             </div>
-            <span className="rounded-full bg-famboard-accent/20 px-3 py-1 text-sm font-semibold text-famboard-dark dark:bg-amber-400/20 dark:text-amber-200">
-              {reward.cost} pts
-            </span>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 transition group-hover:text-famboard-primary dark:text-white">
+                    {reward.title}
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {reward.description || 'Add a fun description to get everyone excited!'}
+                  </p>
+                </div>
+                <span className="rounded-full bg-gradient-to-r from-famboard-primary/10 via-famboard-accent/20 to-emerald-400/20 px-3 py-1 text-sm font-semibold text-famboard-dark dark:from-sky-500/10 dark:via-emerald-400/20 dark:to-amber-300/20 dark:text-amber-200">
+                  {reward.cost} pts
+                </span>
+              </div>
+            </div>
           </div>
           <div className="space-y-3">
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -128,6 +181,22 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave }) {
               ))}
             </select>
           </div>
+          {selectedMemberData && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <span>Progress</span>
+                <span>
+                  {Math.min(selectedMemberData.points, reward.cost)} / {reward.cost || 0} pts
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/80">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r from-famboard-primary via-sky-500 to-emerald-400 transition-all duration-500`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => selectedMember && onRedeem(selectedMember, reward.id)}
@@ -166,94 +235,110 @@ function RewardCard({ reward, members, onRedeem, onDelete, onSave }) {
 }
 
 export default function RewardsScreen() {
-  const { state, addReward, redeemReward, removeReward, updateReward } = useFamboard()
+  const { state, redeemReward, removeReward, updateReward } = useFamboard()
   const { familyMembers, rewards } = state
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    cost: 20,
-  })
 
-  const handleCreate = (event) => {
-    event.preventDefault()
-    if (!form.title.trim()) return
-    addReward({
-      title: form.title.trim(),
-      description: form.description.trim(),
-      cost: Number(form.cost) || 0,
-    })
-    setForm({ title: '', description: '', cost: 20 })
-  }
+  const totalPoints = useMemo(
+    () => familyMembers.reduce((sum, member) => sum + member.points, 0),
+    [familyMembers],
+  )
+
+  const readyToRedeem = useMemo(
+    () =>
+      rewards.filter((reward) =>
+        familyMembers.some((member) => reward.cost === 0 || member.points >= reward.cost),
+      ).length,
+    [familyMembers, rewards],
+  )
+
+  const averageCost = useMemo(() => {
+    if (rewards.length === 0) return 0
+    const totalCost = rewards.reduce((sum, reward) => sum + reward.cost, 0)
+    return Math.round(totalCost / rewards.length)
+  }, [rewards])
+
+  const topMember = useMemo(() => {
+    if (familyMembers.length === 0) return null
+    return familyMembers.reduce((prev, current) =>
+      current.points > prev.points ? current : prev,
+    )
+  }, [familyMembers])
 
   return (
-    <div className="space-y-8 pb-16">
-      <section className="rounded-3xl bg-white/80 p-6 shadow-card ring-1 ring-white/30 backdrop-blur dark:bg-slate-900/70 dark:ring-slate-800">
-        <h2 className="font-display text-2xl text-slate-800 dark:text-white">
-          Dream up a new reward
-        </h2>
-        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          Celebrate wins with experiences and treats worth working toward.
-        </p>
-        <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-1 md:col-span-2">
-            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Reward title
-            </label>
-            <input
-              required
-              value={form.title}
-              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-lg shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-              placeholder="Family game night"
-            />
+    <div className="space-y-10 pb-16">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-famboard-primary via-sky-500 to-emerald-500 p-8 text-white shadow-xl">
+        <div className="absolute -left-24 top-10 h-56 w-56 rounded-full bg-white/10 blur-3xl" aria-hidden />
+        <div className="absolute -right-10 -bottom-10 h-60 w-60 rounded-full bg-emerald-400/20 blur-3xl" aria-hidden />
+        <div className="relative space-y-8">
+          <div className="max-w-3xl space-y-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/70">Celebration station</p>
+            <h2 className="font-display text-4xl leading-tight sm:text-5xl">Turn points into unforgettable family moments</h2>
+            <p className="text-base text-white/80">
+              Browse the current reward shelf, see who is closest to cashing in, and cheer everyone on.
+            </p>
           </div>
-          <div className="space-y-1 md:col-span-2">
-            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Description
-            </label>
-            <textarea
-              value={form.description}
-              onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-              className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-              placeholder="Include all the fun details that make this reward special."
-            />
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl bg-white/10 p-4 shadow-inner backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Rewards ready to redeem</p>
+              <p className="mt-2 text-3xl font-bold">{readyToRedeem}</p>
+              <p className="text-xs text-white/70">Family treats are within reach right now.</p>
+            </div>
+            <div className="rounded-2xl bg-white/10 p-4 shadow-inner backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Points in circulation</p>
+              <p className="mt-2 text-3xl font-bold">{totalPoints}</p>
+              <p className="text-xs text-white/70">Earned by your hard-working crew.</p>
+            </div>
+            <div className="rounded-2xl bg-white/10 p-4 shadow-inner backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Average reward cost</p>
+              <p className="mt-2 text-3xl font-bold">{averageCost} pts</p>
+              <p className="text-xs text-white/70">Plan chores that match the excitement.</p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Cost (points)
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={form.cost}
-              onChange={(event) => setForm((prev) => ({ ...prev, cost: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <button
-              type="submit"
-              className="w-full rounded-full bg-emerald-500 px-6 py-3 text-lg font-semibold text-white shadow-lg transition hover:bg-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-300/70"
+          {topMember && (
+            <div className="flex flex-col gap-4 rounded-2xl bg-white/10 p-4 shadow-inner backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Points leader</p>
+                <p className="text-lg font-semibold">{topMember.name}</p>
+                <p className="text-sm text-white/70">{topMember.points} points earned and ready to celebrate.</p>
+              </div>
+              <Link
+                to="/settings"
+                className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-famboard-primary shadow-lg transition hover:-translate-y-0.5 hover:bg-famboard-accent hover:text-famboard-dark"
+              >
+                Create new rewards in settings
+              </Link>
+            </div>
+          )}
+          {!topMember && (
+            <Link
+              to="/settings"
+              className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-famboard-primary shadow-lg transition hover:-translate-y-0.5 hover:bg-famboard-accent hover:text-famboard-dark"
             >
-              Add reward
-            </button>
-          </div>
-        </form>
+              Head to settings to create your first reward
+            </Link>
+          )}
+        </div>
       </section>
 
       <section className="space-y-6">
-        <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <h2 className="font-display text-2xl text-slate-800 dark:text-white">
-            Reward shelf
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Pick who redeems the reward and the points will update instantly.
-          </p>
-        </header>
-        <div className="grid gap-4 xl:grid-cols-2">
-          {rewards.length === 0 && (
+        <header className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h3 className="font-display text-3xl text-slate-800 dark:text-white">Reward shelf</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Add your first reward above to get everyone motivated.
+              Pick who redeems the reward and watch their points sparkle away in real time.
+            </p>
+          </div>
+          <Link
+            to="/settings"
+            className="inline-flex items-center justify-center rounded-full border border-famboard-primary/60 px-4 py-2 text-sm font-semibold text-famboard-primary transition hover:bg-famboard-primary hover:text-white"
+          >
+            Manage rewards in settings
+          </Link>
+        </header>
+        <div className="grid gap-5 lg:grid-cols-2">
+          {rewards.length === 0 && (
+            <p className="rounded-3xl border border-dashed border-slate-300/80 bg-white/70 p-6 text-sm text-slate-500 shadow-inner dark:border-slate-700/80 dark:bg-slate-900/70 dark:text-slate-400">
+              The shelf is empty—visit the settings admin page to dream up your first reward.
             </p>
           )}
           {rewards.map((reward) => (
