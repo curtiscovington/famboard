@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Famboard</title>
+    <meta http-equiv="refresh" content="0; url=/famboard/" />
+    <script>
+      (function () {
+        var base = '/famboard/';
+        var pathname = window.location.pathname || '';
+        var search = window.location.search || '';
+        var hash = window.location.hash || '';
+        var relativePath = pathname.startsWith(base)
+          ? pathname.slice(base.length)
+          : pathname.replace(/^\//, '');
+        var redirect = relativePath + search + hash;
+        try {
+          sessionStorage.setItem('famboard-redirect', redirect);
+        } catch (error) {
+          console.warn('Unable to store redirect for Famboard', error);
+        }
+        window.location.replace(base);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
