@@ -6,6 +6,12 @@ import { useFamboard } from '../context/FamboardContext.jsx'
 import { getRecurrenceLabel, RECURRENCE_OPTIONS } from '../utils/recurrence.js'
 import { MediaPicker } from '../components/MediaPicker.jsx'
 import { MediaImage } from '../components/MediaImage.jsx'
+import {
+  formatDateForInput,
+  formatDateLabel,
+  parseInputDateToISO,
+  toStartOfDayISOString,
+} from '../utils/date.js'
 
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
 
@@ -185,6 +191,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
     imageUrl: chore.imageUrl ?? '',
     recurrence: chore.recurrence ?? 'none',
     rotateAssignment: Boolean(chore.rotateAssignment),
+    scheduleAnchor: formatDateForInput(chore.schedule?.anchorDate ?? toStartOfDayISOString(new Date())),
   })
 
   useEffect(() => {
@@ -197,6 +204,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
       imageUrl: chore.imageUrl ?? '',
       recurrence: chore.recurrence ?? 'none',
       rotateAssignment: Boolean(chore.rotateAssignment),
+      scheduleAnchor: formatDateForInput(chore.schedule?.anchorDate ?? toStartOfDayISOString(new Date())),
     })
   }, [chore])
 
@@ -213,6 +221,10 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
       imageUrl: form.imageUrl.trim(),
       recurrence: form.recurrence,
       rotateAssignment: form.rotateAssignment,
+      schedule: {
+        anchorDate: parseInputDateToISO(form.scheduleAnchor, chore.schedule?.anchorDate),
+        allDay: true,
+      },
     })
     setIsEditing(false)
   }
@@ -320,6 +332,23 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
                 <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
               )}
             </div>
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Starts on</label>
+              <input
+                type="date"
+                value={form.scheduleAnchor}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    scheduleAnchor: event.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              />
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Align this anchor date with your household calendar so sync exports stay accurate.
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
@@ -377,6 +406,9 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
                   </span>
                 )}
               </div>
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Starts {formatDateLabel(chore.schedule?.anchorDate, { month: 'short', day: 'numeric', year: 'numeric' }) || 'soon'}
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -435,6 +467,7 @@ export default function SettingsScreen() {
     imageUrl: '',
     recurrence: 'none',
     rotateAssignment: false,
+    scheduleAnchor: formatDateForInput(toStartOfDayISOString(new Date())),
   })
 
   const totalPoints = useMemo(
@@ -517,6 +550,10 @@ export default function SettingsScreen() {
       imageUrl: choreForm.imageUrl.trim(),
       recurrence: choreForm.recurrence,
       rotateAssignment: choreForm.rotateAssignment,
+      schedule: {
+        anchorDate: parseInputDateToISO(choreForm.scheduleAnchor),
+        allDay: true,
+      },
     })
     setChoreForm({
       title: '',
@@ -527,6 +564,7 @@ export default function SettingsScreen() {
       imageUrl: '',
       recurrence: 'none',
       rotateAssignment: false,
+      scheduleAnchor: formatDateForInput(toStartOfDayISOString(new Date())),
     })
   }
 
@@ -796,6 +834,23 @@ export default function SettingsScreen() {
                   {choreForm.rotateAssignment && familyMembers.length === 0 && (
                     <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
                   )}
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Starts on</label>
+                  <input
+                    type="date"
+                    value={choreForm.scheduleAnchor}
+                    onChange={(event) =>
+                      setChoreForm((prev) => ({
+                        ...prev,
+                        scheduleAnchor: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                  />
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    We’ll use this anchor date to power the new calendar views and upcoming sync exports.
+                  </p>
                 </div>
               </div>
               <div className="flex justify-end">
