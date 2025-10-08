@@ -1,4 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import {
+  calculateNextResetTimestamp,
+  getNextRotationAssignee,
+} from '../utils/recurrence.js'
 
 const STORAGE_KEY = 'famboard-state-v1'
 
@@ -40,6 +44,8 @@ const defaultData = {
       completedAt: null,
       imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
+      recurrence: 'daily',
+      rotateAssignment: false,
     },
     {
       id: 'chore-2',
@@ -51,6 +57,8 @@ const defaultData = {
       completedAt: null,
       imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=200&q=80',
+      recurrence: 'weekdays',
+      rotateAssignment: true,
     },
     {
       id: 'chore-3',
@@ -62,6 +70,8 @@ const defaultData = {
       completedAt: null,
       imageId: null,
       imageUrl: 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=200&q=80',
+      recurrence: 'weekly',
+      rotateAssignment: false,
     },
   ],
   rewards: [
@@ -100,6 +110,54 @@ export function FamboardProvider({ children }) {
   const [state, setState] = useState(defaultData)
   const [isHydrated, setIsHydrated] = useState(false)
 
+  const runRecurrenceCheck = useCallback(() => {
+    setState((prev) => {
+      if (!prev.chores || prev.chores.length === 0) {
+        return prev
+      }
+
+      const now = Date.now()
+      let updated = false
+
+      const updatedChores = prev.chores.map((chore) => {
+        if (!chore.recurrence || chore.recurrence === 'none') {
+          return chore
+        }
+
+        if (!chore.completed || !chore.completedAt) {
+          return chore
+        }
+
+        const nextReset = calculateNextResetTimestamp(chore.completedAt, chore.recurrence)
+        if (!nextReset || now < nextReset) {
+          return chore
+        }
+
+        const nextAssignee = chore.rotateAssignment
+          ? getNextRotationAssignee(prev.familyMembers, chore.assignedTo)
+          : chore.assignedTo ?? null
+
+        updated = true
+
+        return {
+          ...chore,
+          completed: false,
+          completedAt: null,
+          assignedTo: nextAssignee,
+        }
+      })
+
+      if (!updated) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        chores: updatedChores,
+      }
+    })
+  }, [])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
@@ -123,6 +181,19 @@ export function FamboardProvider({ children }) {
       console.warn('Unable to persist Famboard data', error)
     }
   }, [state, isHydrated])
+
+  useEffect(() => {
+    if (!isHydrated) return
+    runRecurrenceCheck()
+  }, [isHydrated, state.chores, state.familyMembers, runRecurrenceCheck])
+
+  useEffect(() => {
+    if (!isHydrated || typeof window === 'undefined') return undefined
+    const timer = window.setInterval(runRecurrenceCheck, 60 * 1000)
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [isHydrated, runRecurrenceCheck])
 
   useEffect(() => {
     if (!isHydrated || typeof document === 'undefined') return
@@ -230,12 +301,16 @@ export function FamboardProvider({ children }) {
               id: createId('chore'),
               title: payload.title,
               description: payload.description,
-              assignedTo: payload.assignedTo ?? null,
+              assignedTo:
+                payload.assignedTo ??
+                (payload.rotateAssignment && prev.familyMembers[0]?.id ? prev.familyMembers[0].id : null),
               points: Math.max(Number(payload.points) || 0, 0),
               completed: false,
               completedAt: null,
               imageId: payload.imageId ?? null,
               imageUrl: payload.imageUrl ?? '',
+              recurrence: payload.recurrence ?? 'none',
+              rotateAssignment: Boolean(payload.rotateAssignment),
             },
           ],
         })),
@@ -248,8 +323,18 @@ export function FamboardProvider({ children }) {
             updates.points !== undefined
               ? Math.max(Number(updates.points) || 0, 0)
               : existing.points
-          const nextAssigned =
+          let nextAssigned =
             updates.assignedTo !== undefined ? updates.assignedTo : existing.assignedTo
+
+          const nextRecurrence = updates.recurrence ?? existing.recurrence ?? 'none'
+          const nextRotateAssignment =
+            updates.rotateAssignment !== undefined
+              ? Boolean(updates.rotateAssignment)
+              : existing.rotateAssignment ?? false
+
+          if (nextRotateAssignment && !nextAssigned && prev.familyMembers.length > 0) {
+            nextAssigned = prev.familyMembers[0].id
+          }
 
           const updatedChores = prev.chores.map((chore) =>
             chore.id === id
@@ -260,6 +345,8 @@ export function FamboardProvider({ children }) {
                   points: nextPoints,
                   imageId: updates.imageId !== undefined ? updates.imageId : chore.imageId ?? null,
                   imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : chore.imageUrl,
+                  recurrence: nextRecurrence,
+                  rotateAssignment: nextRotateAssignment,
                 }
               : chore,
           )

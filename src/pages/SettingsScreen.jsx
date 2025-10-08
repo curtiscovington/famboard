@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
+import { getRecurrenceLabel, RECURRENCE_OPTIONS } from '../utils/recurrence.js'
 import { MediaPicker } from '../components/MediaPicker.jsx'
 import { MediaImage } from '../components/MediaImage.jsx'
 
@@ -182,6 +183,8 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
     points: chore.points,
     imageId: chore.imageId ?? null,
     imageUrl: chore.imageUrl ?? '',
+    recurrence: chore.recurrence ?? 'none',
+    rotateAssignment: Boolean(chore.rotateAssignment),
   })
 
   useEffect(() => {
@@ -192,6 +195,8 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
       points: chore.points,
       imageId: chore.imageId ?? null,
       imageUrl: chore.imageUrl ?? '',
+      recurrence: chore.recurrence ?? 'none',
+      rotateAssignment: Boolean(chore.rotateAssignment),
     })
   }, [chore])
 
@@ -206,6 +211,8 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
       points: Number(form.points) || 0,
       imageId: form.imageId ?? null,
       imageUrl: form.imageUrl.trim(),
+      recurrence: form.recurrence,
+      rotateAssignment: form.rotateAssignment,
     })
     setIsEditing(false)
   }
@@ -251,6 +258,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
                 value={form.assignedTo}
                 onChange={(event) => setForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                disabled={form.rotateAssignment && members.length <= 1}
               >
                 <option value="">Unassigned</option>
                 {members.map((member) => (
@@ -259,6 +267,9 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
                   </option>
                 ))}
               </select>
+              {form.rotateAssignment && (
+                <p className="text-xs text-slate-400 dark:text-slate-500">Assignment rotates automatically.</p>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Points</label>
@@ -269,6 +280,45 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
                 onChange={(event) => setForm((prev) => ({ ...prev, points: event.target.value }))}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
               />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Repeats</label>
+              <select
+                value={form.recurrence}
+                onChange={(event) => setForm((prev) => ({ ...prev, recurrence: event.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              >
+                {RECURRENCE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Rotation</label>
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-inner dark:border-slate-700 dark:bg-slate-900">
+                <input
+                  id={`admin-rotate-${chore.id}`}
+                  type="checkbox"
+                  checked={form.rotateAssignment}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      rotateAssignment: event.target.checked,
+                      assignedTo:
+                        event.target.checked && members.length === 0 ? '' : prev.assignedTo,
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-slate-300 text-famboard-primary focus:ring-famboard-primary"
+                />
+                <label htmlFor={`admin-rotate-${chore.id}`} className="flex-1 cursor-pointer select-none">
+                  Rotate between family members
+                </label>
+              </div>
+              {form.rotateAssignment && members.length === 0 && (
+                <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -317,6 +367,16 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {assignedMember ? `Assigned to ${assignedMember.name}` : 'Unassigned'}
               </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full bg-slate-100 px-3 py-1 font-medium dark:bg-slate-800/60">
+                  {getRecurrenceLabel(chore.recurrence ?? 'none')}
+                </span>
+                {chore.rotateAssignment && (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 font-medium dark:bg-slate-800/60">
+                    Rotates between helpers
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -372,6 +432,8 @@ export default function SettingsScreen() {
     points: 10,
     imageId: null,
     imageUrl: '',
+    recurrence: 'none',
+    rotateAssignment: false,
   })
 
   const totalPoints = useMemo(
@@ -445,6 +507,17 @@ export default function SettingsScreen() {
       points: Number(choreForm.points) || 0,
       imageId: choreForm.imageId ?? null,
       imageUrl: choreForm.imageUrl.trim(),
+      recurrence: choreForm.recurrence,
+      rotateAssignment: choreForm.rotateAssignment,
+    })
+    setChoreForm({
+      title: '',
+      description: '',
+      assignedTo: '',
+      points: 10,
+      imageUrl: '',
+      recurrence: 'none',
+      rotateAssignment: false,
     })
     setChoreForm({
       title: '',
@@ -620,6 +693,7 @@ export default function SettingsScreen() {
               value={choreForm.assignedTo}
               onChange={(event) => setChoreForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+              disabled={choreForm.rotateAssignment && familyMembers.length <= 1}
             >
               <option value="">Unassigned</option>
               {familyMembers.map((member) => (
@@ -628,6 +702,9 @@ export default function SettingsScreen() {
                 </option>
               ))}
             </select>
+            {choreForm.rotateAssignment && (
+              <p className="text-xs text-slate-400 dark:text-slate-500">Assignment rotates automatically.</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Points</label>
@@ -638,6 +715,45 @@ export default function SettingsScreen() {
               onChange={(event) => setChoreForm((prev) => ({ ...prev, points: event.target.value }))}
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
             />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Repeats</label>
+            <select
+              value={choreForm.recurrence}
+              onChange={(event) => setChoreForm((prev) => ({ ...prev, recurrence: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+            >
+              {RECURRENCE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Rotation</label>
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner dark:border-slate-700 dark:bg-slate-900">
+              <input
+                id="new-chore-rotate"
+                type="checkbox"
+                checked={choreForm.rotateAssignment}
+                onChange={(event) =>
+                  setChoreForm((prev) => ({
+                    ...prev,
+                    rotateAssignment: event.target.checked,
+                    assignedTo:
+                      event.target.checked && familyMembers.length === 0 ? '' : prev.assignedTo,
+                  }))
+                }
+                className="h-4 w-4 rounded border-slate-300 text-famboard-primary focus:ring-famboard-primary"
+              />
+              <label htmlFor="new-chore-rotate" className="flex-1 cursor-pointer select-none">
+                Rotate between family members
+              </label>
+            </div>
+            {choreForm.rotateAssignment && familyMembers.length === 0 && (
+              <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
+            )}
           </div>
           <div className="md:col-span-2">
             <button
