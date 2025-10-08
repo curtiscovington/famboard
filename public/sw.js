@@ -8,12 +8,13 @@ const OFFLINE_URLS = [
   `${APP_BASE}icons/icon-192.svg`,
   `${APP_BASE}icons/icon-512.svg`,
 ]
+const OFFLINE_REQUESTS = OFFLINE_URLS.map((url) => new Request(url, { cache: 'reload' }))
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(OFFLINE_URLS))
+      .then((cache) => cache.addAll(OFFLINE_REQUESTS))
       .then(() => self.skipWaiting()),
   )
 })
@@ -31,6 +32,12 @@ self.addEventListener('activate', (event) => {
       )
       .then(() => self.clients.claim()),
   )
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
 })
 
 self.addEventListener('fetch', (event) => {
