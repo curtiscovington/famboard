@@ -6,6 +6,7 @@ import { useFamboard } from '../context/FamboardContext.jsx'
 import { getRecurrenceLabel, RECURRENCE_OPTIONS } from '../utils/recurrence.js'
 import { MediaPicker } from '../components/MediaPicker.jsx'
 import { MediaImage } from '../components/MediaImage.jsx'
+import { IdeaGallery } from '../components/IdeaGallery.jsx'
 import {
   formatDateForInput,
   formatDateLabel,
@@ -18,6 +19,7 @@ import {
   generatePinSalt,
   verifyPin,
 } from '../utils/pin.js'
+import { CHORE_IDEAS, REWARD_IDEAS } from '../data/ideaDecks.js'
 
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
 const PIN_REQUIREMENT_OVERRIDE = import.meta.env.VITE_REQUIRE_SETTINGS_PIN
@@ -775,6 +777,57 @@ export default function SettingsScreen() {
     return Math.round(totalCost / rewards.length)
   }, [rewards])
 
+  const choreIdeaCards = useMemo(
+    () =>
+      CHORE_IDEAS.map((idea) => ({
+        ...idea,
+        badge: `${idea.points} pts`,
+        meta: [
+          getRecurrenceLabel(idea.recurrence ?? 'none'),
+          idea.rotateAssignment ? 'Rotates helpers' : null,
+        ]
+          .filter(Boolean)
+          .join(' • '),
+      })),
+    [],
+  )
+
+  const rewardIdeaCards = useMemo(
+    () =>
+      REWARD_IDEAS.map((idea) => ({
+        ...idea,
+        badge: `${idea.cost} pts`,
+        meta: idea.tag,
+      })),
+    [],
+  )
+
+  const handleApplyChoreIdea = (idea) => {
+    setCreationTab('chore')
+    setChoreForm((prev) => ({
+      ...prev,
+      title: idea.title,
+      description: idea.description,
+      points: idea.points,
+      imageId: null,
+      imageUrl: idea.imageUrl ?? '',
+      recurrence: idea.recurrence ?? prev.recurrence,
+      rotateAssignment: idea.rotateAssignment ?? prev.rotateAssignment,
+    }))
+  }
+
+  const handleApplyRewardIdea = (idea) => {
+    setCreationTab('reward')
+    setRewardForm((prev) => ({
+      ...prev,
+      title: idea.title,
+      description: idea.description,
+      cost: idea.cost ?? prev.cost,
+      imageId: null,
+      imageUrl: idea.imageUrl ?? '',
+    }))
+  }
+
   if (!isHydrated) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6 py-10 dark:bg-slate-950">
@@ -1275,142 +1328,152 @@ export default function SettingsScreen() {
             </form>
           )}
           {creationTab === 'chore' && (
-            <form
-              onSubmit={handleCreateChore}
-              className="space-y-6 rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-inner dark:border-slate-700/70 dark:bg-slate-900/80"
-            >
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Chore title</label>
-                  <input
-                    value={choreForm.title}
-                    onChange={(event) => setChoreForm((prev) => ({ ...prev, title: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-                    placeholder="Tidy the playroom"
-                    required
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Description</label>
-                  <textarea
-                    value={choreForm.description}
-                    onChange={(event) => setChoreForm((prev) => ({ ...prev, description: event.target.value }))}
-                    className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-                    placeholder="List the steps so everyone knows what finished looks like."
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <MediaPicker
-                    label="Chore photo"
-                    description="Add a helpful visual so kids recognize the task."
-                    imageId={choreForm.imageId}
-                    imageUrl={choreForm.imageUrl}
-                    onChange={(next) =>
-                      setChoreForm((prev) => ({
-                        ...prev,
-                        imageId: next.imageId ?? null,
-                        imageUrl: next.imageUrl ?? '',
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Assign to</label>
-                  <select
-                    value={choreForm.assignedTo}
-                    onChange={(event) => setChoreForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-                    disabled={choreForm.rotateAssignment && familyMembers.length <= 1}
-                  >
-                    <option value="">Unassigned</option>
-                    {familyMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.name}
-                      </option>
-                    ))}
-                  </select>
-                  {choreForm.rotateAssignment && (
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Assignment rotates automatically.</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Points</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={choreForm.points}
-                    onChange={(event) => setChoreForm((prev) => ({ ...prev, points: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Repeats</label>
-                  <select
-                    value={choreForm.recurrence}
-                    onChange={(event) => setChoreForm((prev) => ({ ...prev, recurrence: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-                  >
-                    {RECURRENCE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Rotation</label>
-                  <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner dark:border-slate-700 dark:bg-slate-900">
+            <>
+              <form
+                onSubmit={handleCreateChore}
+                className="space-y-6 rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-inner dark:border-slate-700/70 dark:bg-slate-900/80"
+              >
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Chore title</label>
                     <input
-                      id="create-rotate"
-                      type="checkbox"
-                      checked={choreForm.rotateAssignment}
+                      value={choreForm.title}
+                      onChange={(event) => setChoreForm((prev) => ({ ...prev, title: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                      placeholder="Tidy the playroom"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Description</label>
+                    <textarea
+                      value={choreForm.description}
+                      onChange={(event) => setChoreForm((prev) => ({ ...prev, description: event.target.value }))}
+                      className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                      placeholder="List the steps so everyone knows what finished looks like."
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <MediaPicker
+                      label="Chore photo"
+                      description="Add a helpful visual so kids recognize the task."
+                      imageId={choreForm.imageId}
+                      imageUrl={choreForm.imageUrl}
+                      onChange={(next) =>
+                        setChoreForm((prev) => ({
+                          ...prev,
+                          imageId: next.imageId ?? null,
+                          imageUrl: next.imageUrl ?? '',
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Assign to</label>
+                    <select
+                      value={choreForm.assignedTo}
+                      onChange={(event) => setChoreForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                      disabled={choreForm.rotateAssignment && familyMembers.length <= 1}
+                    >
+                      <option value="">Unassigned</option>
+                      {familyMembers.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
+                    {choreForm.rotateAssignment && (
+                      <p className="text-xs text-slate-400 dark:text-slate-500">Assignment rotates automatically.</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Points</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={choreForm.points}
+                      onChange={(event) => setChoreForm((prev) => ({ ...prev, points: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Repeats</label>
+                    <select
+                      value={choreForm.recurrence}
+                      onChange={(event) => setChoreForm((prev) => ({ ...prev, recurrence: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
+                    >
+                      {RECURRENCE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Rotation</label>
+                    <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner dark:border-slate-700 dark:bg-slate-900">
+                      <input
+                        id="create-rotate"
+                        type="checkbox"
+                        checked={choreForm.rotateAssignment}
+                        onChange={(event) =>
+                          setChoreForm((prev) => ({
+                            ...prev,
+                            rotateAssignment: event.target.checked,
+                            assignedTo:
+                              event.target.checked && familyMembers.length === 0 ? '' : prev.assignedTo,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-famboard-primary focus:ring-famboard-primary"
+                      />
+                      <label htmlFor="create-rotate" className="flex-1 cursor-pointer select-none">
+                        Rotate between family members
+                      </label>
+                    </div>
+                    {choreForm.rotateAssignment && familyMembers.length === 0 && (
+                      <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
+                    )}
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Starts on</label>
+                    <input
+                      type="date"
+                      value={choreForm.scheduleAnchor}
                       onChange={(event) =>
                         setChoreForm((prev) => ({
                           ...prev,
-                          rotateAssignment: event.target.checked,
-                          assignedTo:
-                            event.target.checked && familyMembers.length === 0 ? '' : prev.assignedTo,
+                          scheduleAnchor: event.target.value,
                         }))
                       }
-                      className="h-4 w-4 rounded border-slate-300 text-famboard-primary focus:ring-famboard-primary"
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
                     />
-                    <label htmlFor="create-rotate" className="flex-1 cursor-pointer select-none">
-                      Rotate between family members
-                    </label>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      We’ll use this anchor date to power the new calendar views and upcoming sync exports.
+                    </p>
                   </div>
-                  {choreForm.rotateAssignment && familyMembers.length === 0 && (
-                    <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
-                  )}
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Starts on</label>
-                  <input
-                    type="date"
-                    value={choreForm.scheduleAnchor}
-                    onChange={(event) =>
-                      setChoreForm((prev) => ({
-                        ...prev,
-                        scheduleAnchor: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-                  />
-                  <p className="text-xs text-slate-400 dark:text-slate-500">
-                    We’ll use this anchor date to power the new calendar views and upcoming sync exports.
-                  </p>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-full bg-famboard-primary px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-famboard-dark focus:outline-none focus:ring-4 focus:ring-famboard-accent/40"
+                  >
+                    Add chore
+                  </button>
                 </div>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-full bg-famboard-primary px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-famboard-dark focus:outline-none focus:ring-4 focus:ring-famboard-accent/40"
-                >
-                  Add chore
-                </button>
-              </div>
-            </form>
+              </form>
+              <IdeaGallery
+                title="Need a spark?"
+                description="Pick a ready-made idea to prefill the form, then tweak the details so it fits your crew."
+                items={choreIdeaCards}
+                actionLabel="Use this chore"
+                onSelect={handleApplyChoreIdea}
+              />
+            </>
           )}
           {creationTab === 'reward' && (
+            <>
             <form
               onSubmit={handleCreateReward}
               className="space-y-6 rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-inner dark:border-slate-700/70 dark:bg-slate-900/80"
@@ -1469,6 +1532,14 @@ export default function SettingsScreen() {
                 </button>
               </div>
             </form>
+              <IdeaGallery
+                title="Reward inspiration"
+                description="Browse family-favorite treats and fill the form with one tap."
+                items={rewardIdeaCards}
+                actionLabel="Use this reward"
+                onSelect={handleApplyRewardIdea}
+              />
+            </>
           )}
         </div>
       </section>
