@@ -1,6 +1,10 @@
+/* global __APP_VERSION__ */
+
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
+
+const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
 
 function MemberCard({ member, onSave, onRemove }) {
   const [name, setName] = useState(member.name)
@@ -456,6 +460,9 @@ export default function SettingsScreen() {
         >
           Reset all data
         </button>
+        <p className="mt-6 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          App version <span className="font-semibold text-slate-600 dark:text-slate-300">{APP_VERSION}</span>
+        </p>
       </section>
     </div>
   )
