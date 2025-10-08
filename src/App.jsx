@@ -31,6 +31,16 @@ function UserSwitcher() {
   const { state, setActiveView } = useFamboard()
   const { familyMembers, chores, activeView } = state
 
+  const activeMember = useMemo(
+    () => (activeView === 'family' ? null : familyMembers.find((member) => member.id === activeView) ?? null),
+    [activeView, familyMembers],
+  )
+
+  const getMemberChoreCount = (memberId) =>
+    chores.filter((chore) => !chore.completed && chore.assignedTo === memberId).length
+
+  const activeMemberOpenChores = activeMember ? getMemberChoreCount(activeMember.id) : 0
+
   const totalFamilyPoints = useMemo(
     () => familyMembers.reduce((sum, member) => sum + member.points, 0),
     [familyMembers],
@@ -41,77 +51,130 @@ function UserSwitcher() {
     [chores],
   )
 
-  const getMemberChoreCount = (memberId) =>
-    chores.filter((chore) => !chore.completed && chore.assignedTo === memberId).length
+  const familySummary = activeMember
+    ? `${activeMember.points} pts · ${activeMemberOpenChores} chore${
+        activeMemberOpenChores === 1 ? '' : 's'
+      } waiting`
+    : `${familyMembers.length} member${familyMembers.length === 1 ? '' : 's'} · ${familyOpenChores} open chore${
+        familyOpenChores === 1 ? '' : 's'
+      } · ${totalFamilyPoints} pts`
 
   const tileBaseClasses =
-    'flex min-w-[15rem] flex-1 items-center gap-4 rounded-3xl border px-4 py-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-famboard-primary/40 focus:ring-offset-2'
+    'group relative flex items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-famboard-primary/50 focus:ring-offset-2 dark:focus:ring-offset-slate-900'
 
   return (
     <section className="mx-auto mt-4 w-full max-w-6xl px-4">
-      <div className="flex snap-x gap-3 overflow-x-auto pb-2 md:flex-wrap md:pb-0">
-        <button
-          type="button"
-          onClick={() => setActiveView('family')}
-          className={`${tileBaseClasses} snap-center ${
-            activeView === 'family'
-              ? 'border-famboard-primary bg-famboard-primary/10 text-famboard-dark dark:border-sky-500 dark:bg-sky-500/10 dark:text-sky-100'
-              : 'border-white/60 bg-white/80 text-slate-600 hover:border-famboard-primary/40 hover:bg-famboard-primary/10 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200'
-          }`}
-        >
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-famboard-primary/20 text-3xl dark:bg-sky-500/20" aria-hidden>
-            👨‍👩‍👧‍👦
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm font-semibold uppercase tracking-wide">Family view</p>
-            <p className="text-lg font-display text-slate-900 dark:text-white">Everyone</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {familyMembers.length} members · {familyOpenChores} chores · {totalFamilyPoints} pts
-            </p>
-          </div>
-        </button>
-        {familyMembers.map((member) => {
-          const upcoming = getMemberChoreCount(member.id)
-          const isActive = activeView === member.id
-          return (
-            <button
-              type="button"
-              key={member.id}
-              onClick={() => setActiveView(member.id)}
-              className={`${tileBaseClasses} snap-center ${
-                isActive
-                  ? 'border-famboard-primary bg-famboard-primary/10 text-famboard-dark dark:border-sky-500 dark:bg-sky-500/10 dark:text-sky-100'
-                  : 'border-white/60 bg-white/80 text-slate-600 hover:border-famboard-primary/40 hover:bg-famboard-primary/10 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200'
-              }`}
+      <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-card backdrop-blur dark:border-slate-800 dark:bg-slate-900/70">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div
+              className={`${
+                activeMember
+                  ? 'border border-famboard-primary/50 bg-white text-famboard-primary shadow-inner dark:border-sky-500/40 dark:bg-slate-900/70 dark:text-sky-200'
+                  : 'border border-famboard-primary/40 bg-famboard-primary/10 text-famboard-primary dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200'
+              } flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl text-3xl`}
+              aria-hidden
             >
-              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/80 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
-                {member.imageUrl ? (
-                  <img src={member.imageUrl} alt={member.name} className="h-full w-full object-cover" />
+              {activeMember ? (
+                activeMember.imageUrl ? (
+                  <img src={activeMember.imageUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-2xl">😊</div>
-                )}
-              </div>
-              <div className="space-y-1 text-left">
-                <p className="text-sm font-semibold uppercase tracking-wide">{member.name}</p>
-                <p className="text-lg font-display text-famboard-primary dark:text-sky-300">{member.points} pts</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{upcoming} chore{upcoming === 1 ? '' : 's'} waiting</p>
-              </div>
-            </button>
-          )
-        })}
-        {familyMembers.length === 0 && (
-          <div className={`${tileBaseClasses} border-dashed border-slate-300/70 bg-white/60 text-slate-500 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-400`}>
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200/80 text-2xl dark:bg-slate-700/80" aria-hidden>
-              ➕
+                  <span className="text-2xl font-semibold">
+                    {activeMember.name ? activeMember.name.charAt(0).toUpperCase() : '🙂'}
+                  </span>
+                )
+              ) : (
+                '👨‍👩‍👧‍👦'
+              )}
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-semibold uppercase tracking-wide">No members yet</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Add family members in settings to personalize the board.
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Currently showing</p>
+              <h2 className="font-display text-2xl text-slate-900 dark:text-white">
+                {activeMember ? activeMember.name : 'Whole family board'}
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-300">{familySummary}</p>
             </div>
           </div>
-        )}
+          <p className="rounded-2xl bg-slate-900/5 px-4 py-3 text-sm text-slate-600 shadow-inner dark:bg-white/5 dark:text-slate-300">
+            Tap anyone below to jump into their chores, cheer on their progress, or switch back to the whole crew.
+          </p>
+        </div>
+
+        <div className="mt-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Quick switch</p>
+          <div
+            role="radiogroup"
+            aria-label="Choose whose board to view"
+            className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={activeView === 'family'}
+              onClick={() => setActiveView('family')}
+              className={`${tileBaseClasses} ${
+                activeView === 'family'
+                  ? 'border-famboard-primary/90 bg-famboard-primary/10 text-famboard-dark shadow-lg dark:border-sky-500 dark:bg-sky-500/10 dark:text-sky-100'
+                  : 'border-white/60 bg-white/70 text-slate-600 hover:border-famboard-primary/40 hover:bg-famboard-primary/5 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200'
+              }`}
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-famboard-primary/15 text-2xl dark:bg-sky-500/15" aria-hidden>
+                👪
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">Whole crew</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {familyMembers.length === 0
+                    ? 'Add your family in settings'
+                    : `${familyMembers.length} member${familyMembers.length === 1 ? '' : 's'} ready`}
+                </p>
+              </div>
+            </button>
+            {familyMembers.map((member) => {
+              const upcoming = getMemberChoreCount(member.id)
+              const isActive = activeView === member.id
+              const initial = member.name ? member.name.charAt(0).toUpperCase() : '🙂'
+              return (
+                <button
+                  type="button"
+                  key={member.id}
+                  role="radio"
+                  aria-checked={isActive}
+                  onClick={() => setActiveView(member.id)}
+                  className={`${tileBaseClasses} ${
+                    isActive
+                      ? 'border-famboard-primary/90 bg-famboard-primary/10 text-famboard-dark shadow-lg dark:border-sky-500 dark:bg-sky-500/10 dark:text-sky-100'
+                      : 'border-white/60 bg-white/70 text-slate-600 hover:border-famboard-primary/40 hover:bg-famboard-primary/5 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200'
+                  }`}
+                >
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/60 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
+                    {member.imageUrl ? (
+                      <img src={member.imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-base font-semibold text-slate-500 dark:text-slate-300">
+                        {initial}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{member.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {member.points} pts · {upcoming} chore{upcoming === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+          {familyMembers.length === 0 && (
+            <div className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-slate-300/70 bg-white/60 px-4 py-3 text-slate-500 shadow-sm dark:border-slate-700/60 dark:bg-slate-900/60 dark:text-slate-400">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-200/80 text-xl dark:bg-slate-700/80" aria-hidden>
+                ➕
+              </div>
+              <p className="text-xs">Add family members in settings to personalize the board.</p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   )
