@@ -34,6 +34,7 @@ const withSchedule = (chore) => {
 const defaultData = {
   theme: 'light',
   activeView: 'family',
+  pwaInstallDismissedAt: null,
   mediaLibrary: [],
   settingsPin: null,
   familyMembers: [
@@ -242,6 +243,11 @@ export function FamboardProvider({ children }) {
         setState((prev) => ({
           ...prev,
           theme,
+        })),
+      dismissPwaInstallPrompt: () =>
+        setState((prev) => ({
+          ...prev,
+          pwaInstallDismissedAt: new Date().toISOString(),
         })),
       upsertMediaItem: (item) =>
         setState((prev) => {
@@ -591,6 +597,7 @@ export function FamboardProvider({ children }) {
           activeView: 'family',
           mediaLibrary: prev.mediaLibrary,
           settingsPin: prev.settingsPin,
+          pwaInstallDismissedAt: prev.pwaInstallDismissedAt,
         })),
     }),
     [state.theme],
