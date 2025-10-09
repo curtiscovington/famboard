@@ -10,9 +10,18 @@
         var pathname = window.location.pathname || '';
         var search = window.location.search || '';
         var hash = window.location.hash || '';
-        var relativePath = pathname.startsWith(base)
-          ? pathname.slice(base.length)
-          : pathname.replace(/^\//, '');
+        var trimmedBase = base.replace(/\/+$/, '');
+        var relativePath;
+
+        if (pathname === trimmedBase) {
+          relativePath = '';
+        } else if (pathname.startsWith(base)) {
+          relativePath = pathname.slice(base.length);
+        } else if (pathname.startsWith(trimmedBase + '/')) {
+          relativePath = pathname.slice(trimmedBase.length + 1);
+        } else {
+          relativePath = pathname.replace(/^\//, '');
+        }
         var redirect = relativePath + search + hash;
         try {
           sessionStorage.setItem('famboard-redirect', redirect);

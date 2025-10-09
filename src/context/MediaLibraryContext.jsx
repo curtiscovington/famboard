@@ -5,6 +5,22 @@ import { getMediaBlob, listAllMetadata, persistMediaRecord, removeMediaRecord } 
 
 const MediaLibraryContext = createContext(null)
 
+const FALLBACK_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic', 'heif', 'tiff', 'tif'])
+
+function isLikelyImageFile(file) {
+  if (!file) return false
+  if (file.type) return file.type.startsWith('image/')
+
+  const name = typeof file.name === 'string' ? file.name.toLowerCase() : ''
+  const extension = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : ''
+  if (extension && FALLBACK_IMAGE_EXTENSIONS.has(extension)) {
+    return true
+  }
+
+  // When the browser omits MIME details, allow the file through so downstream validation can respond.
+  return true
+}
+
 function createMediaId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -71,7 +87,11 @@ export function MediaLibraryProvider({ children }) {
 
   const addMediaFiles = useCallback(
     async (files, options = {}) => {
-      const candidates = Array.from(files || []).filter((file) => file && file.type?.startsWith('image/'))
+      const candidates = Array.from(files || []).filter((file) => {
+        if (!file) return false
+        if (file.type && !file.type.startsWith('image/')) return false
+        return isLikelyImageFile(file)
+      })
       if (candidates.length === 0) {
         return []
       }
