@@ -71,55 +71,55 @@ function UserSwitcher() {
     'group relative flex items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-famboard-primary/50 focus:ring-offset-2 dark:focus:ring-offset-slate-900'
 
   return (
-    <section className="mx-auto mt-4 w-full max-w-6xl px-4">
+    <section className="mx-auto mt-4 mb-6 w-full max-w-6xl px-4 sm:mb-8">
       <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-card backdrop-blur dark:border-slate-800 dark:bg-slate-900/70">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <div
-              className={`${
-                activeMember
-                  ? 'border border-famboard-primary/50 bg-white text-famboard-primary shadow-inner dark:border-sky-500/40 dark:bg-slate-900/70 dark:text-sky-200'
-                  : 'border border-famboard-primary/40 bg-famboard-primary/10 text-famboard-primary dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200'
-              } flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl text-3xl`}
-              aria-hidden
-            >
-              {activeMember ? (
-                activeMember.imageId ? (
-                  <MediaImage
-                    mediaId={activeMember.imageId}
-                    alt={activeMember.name ?? ''}
-                    className="h-full w-full object-cover"
-                    fallback={activeMemberFallback}
-                  />
-                ) : activeMember.imageUrl ? (
-                  <img src={activeMember.imageUrl} alt={activeMember.name ?? ''} className="h-full w-full object-cover" />
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              <div
+                className={`${
+                  activeMember
+                    ? 'border border-famboard-primary/50 bg-white text-famboard-primary shadow-inner dark:border-sky-500/40 dark:bg-slate-900/70 dark:text-sky-200'
+                    : 'border border-famboard-primary/40 bg-famboard-primary/10 text-famboard-primary dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200'
+                } flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl text-3xl`}
+                aria-hidden
+              >
+                {activeMember ? (
+                  activeMember.imageId ? (
+                    <MediaImage
+                      mediaId={activeMember.imageId}
+                      alt={activeMember.name ?? ''}
+                      className="h-full w-full object-cover"
+                      fallback={activeMemberFallback}
+                    />
+                  ) : activeMember.imageUrl ? (
+                    <img src={activeMember.imageUrl} alt={activeMember.name ?? ''} className="h-full w-full object-cover" />
+                  ) : (
+                    activeMemberFallback
+                  )
                 ) : (
-                  activeMemberFallback
-                )
-              ) : (
-                '👨‍👩‍👧‍👦'
-              )}
+                  '👨‍👩‍👧‍👦'
+                )}
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Currently showing</p>
+                <h2 className="font-display text-2xl text-slate-900 dark:text-white">
+                  {activeMember ? activeMember.name : 'Whole family board'}
+                </h2>
+                <p className="text-sm text-slate-600 dark:text-slate-300">{familySummary}</p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Currently showing</p>
-              <h2 className="font-display text-2xl text-slate-900 dark:text-white">
-                {activeMember ? activeMember.name : 'Whole family board'}
-              </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-300">{familySummary}</p>
-            </div>
+            <p className="rounded-2xl bg-slate-900/5 px-4 py-3 text-sm text-slate-600 shadow-inner dark:bg-white/5 dark:text-slate-300">
+              Tap anyone below to jump into their chores, cheer on their progress, or switch back to the whole crew.
+            </p>
           </div>
-          <p className="rounded-2xl bg-slate-900/5 px-4 py-3 text-sm text-slate-600 shadow-inner dark:bg-white/5 dark:text-slate-300">
-            Tap anyone below to jump into their chores, cheer on their progress, or switch back to the whole crew.
-          </p>
-        </div>
-
-        <div className="mt-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Quick switch</p>
-          <div
-            role="radiogroup"
-            aria-label="Choose whose board to view"
-            className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-          >
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Quick switch</p>
+            <div
+              role="radiogroup"
+              aria-label="Choose whose board to view"
+              className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+            >
             <button
               type="button"
               role="radio"
@@ -197,6 +197,7 @@ function UserSwitcher() {
               <p className="text-xs">Add family members in settings to personalize the board.</p>
             </div>
           )}
+          </div>
         </div>
       </div>
     </section>
@@ -243,7 +244,8 @@ function Layout() {
           </div>
           <ThemeToggle />
         </div>
-        <nav className="mx-auto w-full max-w-6xl px-4 pb-4">
+        <UserSwitcher />
+        <nav className="mx-auto w-full max-w-6xl px-4 pb-6">
           <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-between">
             {navigation.map((item) => (
               <NavLink
@@ -287,7 +289,6 @@ function Layout() {
           </div>
         </div>
       )}
-      <UserSwitcher />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         {isHydrated ? (
           <Outlet />
