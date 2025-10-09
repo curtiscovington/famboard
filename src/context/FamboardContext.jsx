@@ -7,11 +7,23 @@ import {
 
 const STORAGE_KEY = 'famboard-state-v1'
 
+const normalizeAssignees = (value) => {
+  if (!value) return []
+  if (Array.isArray(value)) {
+    return Array.from(new Set(value.filter(Boolean)))
+  }
+  return [value].filter(Boolean)
+}
+
 const withSchedule = (chore) => {
   const anchor = chore?.schedule?.anchorDate
   const resolvedAnchor = anchor ? toStartOfDayISOString(anchor) : toStartOfDayISOString(new Date())
+  const assigned = normalizeAssignees(chore?.assignedTo)
+
   return {
     ...chore,
+    assignedTo: assigned,
+    rotateAssignment: assigned.length <= 1 ? Boolean(chore?.rotateAssignment) : false,
     schedule: {
       anchorDate: resolvedAnchor,
       allDay: chore?.schedule?.allDay ?? true,
@@ -52,7 +64,7 @@ const defaultData = {
       id: 'chore-1',
       title: 'Clear the dinner table',
       description: 'Tidy up after meals and wipe the table clean.',
-      assignedTo: 'member-1',
+      assignedTo: ['member-1'],
       points: 10,
       completed: false,
       completedAt: null,
@@ -65,7 +77,7 @@ const defaultData = {
       id: 'chore-2',
       title: 'Feed the pets',
       description: 'Fresh water and food for the pets before school.',
-      assignedTo: 'member-2',
+      assignedTo: ['member-2'],
       points: 8,
       completed: false,
       completedAt: null,
@@ -78,7 +90,7 @@ const defaultData = {
       id: 'chore-3',
       title: 'Laundry helper',
       description: 'Sort colors and help fold clothes.',
-      assignedTo: 'member-3',
+      assignedTo: ['member-3'],
       points: 12,
       completed: false,
       completedAt: null,
@@ -147,9 +159,13 @@ export function FamboardProvider({ children }) {
           return chore
         }
 
+        const currentAssignees = normalizeAssignees(chore.assignedTo)
         const nextAssignee = chore.rotateAssignment
-          ? getNextRotationAssignee(prev.familyMembers, chore.assignedTo)
-          : chore.assignedTo ?? null
+          ? getNextRotationAssignee(prev.familyMembers, currentAssignees[0] ?? null)
+          : currentAssignees[0] ?? null
+        const nextAssignments = chore.rotateAssignment
+          ? normalizeAssignees(nextAssignee)
+          : currentAssignees
 
         updated = true
 
@@ -157,7 +173,7 @@ export function FamboardProvider({ children }) {
           ...chore,
           completed: false,
           completedAt: null,
-          assignedTo: nextAssignee,
+          assignedTo: nextAssignments,
         }
       })
 
@@ -307,54 +323,78 @@ export function FamboardProvider({ children }) {
         setState((prev) => ({
           ...prev,
           familyMembers: prev.familyMembers.filter((member) => member.id !== id),
-          chores: prev.chores.map((chore) =>
-            chore.assignedTo === id ? { ...chore, assignedTo: null } : chore,
-          ),
+          chores: prev.chores.map((chore) => {
+            const current = normalizeAssignees(chore.assignedTo)
+            if (!current.includes(id)) {
+              return chore
+            }
+            const remaining = current.filter((memberId) => memberId !== id)
+            return {
+              ...chore,
+              assignedTo: remaining,
+              rotateAssignment:
+                remaining.length <= 1 ? Boolean(chore.rotateAssignment) : false,
+            }
+          }),
           activeView: prev.activeView === id ? 'family' : prev.activeView,
         })),
       addChore: (payload) =>
-        setState((prev) => ({
-          ...prev,
-          chores: [
-            ...prev.chores,
-            withSchedule({
-              id: createId('chore'),
-              title: payload.title,
-              description: payload.description,
-              assignedTo:
-                payload.assignedTo ??
-                (payload.rotateAssignment && prev.familyMembers[0]?.id ? prev.familyMembers[0].id : null),
-              points: Math.max(Number(payload.points) || 0, 0),
-              completed: false,
-              completedAt: null,
-              imageId: payload.imageId ?? null,
-              imageUrl: payload.imageUrl ?? '',
-              recurrence: payload.recurrence ?? 'none',
-              rotateAssignment: Boolean(payload.rotateAssignment),
-              schedule: payload.schedule,
-            }),
-          ],
-        })),
+        setState((prev) => {
+          const requested = normalizeAssignees(payload.assignedTo)
+          let assigned = requested
+          if (payload.rotateAssignment && assigned.length === 0 && prev.familyMembers[0]?.id) {
+            assigned = [prev.familyMembers[0].id]
+          }
+          const rotateAssignment = Boolean(payload.rotateAssignment) && assigned.length <= 1
+
+          return {
+            ...prev,
+            chores: [
+              ...prev.chores,
+              withSchedule({
+                id: createId('chore'),
+                title: payload.title,
+                description: payload.description,
+                assignedTo: assigned,
+                points: Math.max(Number(payload.points) || 0, 0),
+                completed: false,
+                completedAt: null,
+                imageId: payload.imageId ?? null,
+                imageUrl: payload.imageUrl ?? '',
+                recurrence: payload.recurrence ?? 'none',
+                rotateAssignment,
+                schedule: payload.schedule,
+              }),
+            ],
+          }
+        }),
       updateChore: (id, updates) =>
         setState((prev) => {
           const existing = prev.chores.find((chore) => chore.id === id)
           if (!existing) return prev
 
+          const existingAssigned = normalizeAssignees(existing.assignedTo)
           const nextPoints =
             updates.points !== undefined
               ? Math.max(Number(updates.points) || 0, 0)
               : existing.points
           let nextAssigned =
-            updates.assignedTo !== undefined ? updates.assignedTo : existing.assignedTo
+            updates.assignedTo !== undefined
+              ? normalizeAssignees(updates.assignedTo)
+              : existingAssigned
 
           const nextRecurrence = updates.recurrence ?? existing.recurrence ?? 'none'
-          const nextRotateAssignment =
+          let nextRotateAssignment =
             updates.rotateAssignment !== undefined
               ? Boolean(updates.rotateAssignment)
               : existing.rotateAssignment ?? false
 
-          if (nextRotateAssignment && !nextAssigned && prev.familyMembers.length > 0) {
-            nextAssigned = prev.familyMembers[0].id
+          if (nextAssigned.length > 1) {
+            nextRotateAssignment = false
+          }
+
+          if (nextRotateAssignment && nextAssigned.length === 0 && prev.familyMembers.length > 0) {
+            nextAssigned = [prev.familyMembers[0].id]
           }
 
           const updatedChores = prev.chores.map((chore) =>
@@ -362,7 +402,7 @@ export function FamboardProvider({ children }) {
               ? withSchedule({
                   ...chore,
                   ...updates,
-                  assignedTo: nextAssigned ?? null,
+                  assignedTo: [...nextAssigned],
                   points: nextPoints,
                   imageId: updates.imageId !== undefined ? updates.imageId : chore.imageId ?? null,
                   imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : chore.imageUrl,
@@ -375,23 +415,36 @@ export function FamboardProvider({ children }) {
 
           let familyMembers = prev.familyMembers
           if (existing.completed) {
+            const previousSet = new Set(existingAssigned)
+            const nextSet = new Set(nextAssigned)
             familyMembers = prev.familyMembers.map((member) => {
-              if (member.id === existing.assignedTo && existing.assignedTo !== nextAssigned) {
+              const wasAssigned = previousSet.has(member.id)
+              const willBeAssigned = nextSet.has(member.id)
+
+              if (!wasAssigned && !willBeAssigned) {
+                return member
+              }
+
+              if (wasAssigned && !willBeAssigned) {
                 return {
                   ...member,
                   points: Math.max(member.points - existing.points, 0),
                 }
               }
-              if (member.id === nextAssigned) {
-                const basePoints =
-                  nextAssigned === existing.assignedTo ? member.points : member.points + nextPoints
-                const adjusted =
-                  nextAssigned === existing.assignedTo
-                    ? member.points + (nextPoints - existing.points)
-                    : basePoints
-                return { ...member, points: Math.max(adjusted, 0) }
+
+              if (!wasAssigned && willBeAssigned) {
+                return {
+                  ...member,
+                  points: Math.max(member.points + nextPoints, 0),
+                }
               }
-              return member
+
+              // Member stayed assigned; adjust if points changed
+              const delta = nextPoints - existing.points
+              return {
+                ...member,
+                points: Math.max(member.points + delta, 0),
+              }
             })
           }
 
@@ -408,15 +461,17 @@ export function FamboardProvider({ children }) {
 
           const updatedChores = prev.chores.filter((chore) => chore.id !== id)
           let familyMembers = prev.familyMembers
-          if (target.completed && target.assignedTo) {
-            familyMembers = prev.familyMembers.map((member) =>
-              member.id === target.assignedTo
-                ? {
-                    ...member,
-                    points: Math.max(member.points - target.points, 0),
-                  }
-                : member,
-            )
+          if (target.completed) {
+            const assignees = normalizeAssignees(target.assignedTo)
+            familyMembers = prev.familyMembers.map((member) => {
+              if (!assignees.includes(member.id)) {
+                return member
+              }
+              return {
+                ...member,
+                points: Math.max(member.points - target.points, 0),
+              }
+            })
           }
 
           return {
@@ -441,18 +496,20 @@ export function FamboardProvider({ children }) {
           )
 
           let updatedMembers = prev.familyMembers
-          if (target.assignedTo) {
-            updatedMembers = prev.familyMembers.map((member) =>
-              member.id === target.assignedTo
-                ? {
-                    ...member,
-                    points: Math.max(
-                      member.points + (updatedStatus ? target.points : -target.points),
-                      0,
-                    ),
-                  }
-                : member,
-            )
+          const assignees = normalizeAssignees(target.assignedTo)
+          if (assignees.length > 0) {
+            updatedMembers = prev.familyMembers.map((member) => {
+              if (!assignees.includes(member.id)) {
+                return member
+              }
+              return {
+                ...member,
+                points: Math.max(
+                  member.points + (updatedStatus ? target.points : -target.points),
+                  0,
+                ),
+              }
+            })
           }
 
           return {

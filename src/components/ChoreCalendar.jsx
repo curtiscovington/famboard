@@ -16,6 +16,7 @@ import {
   toStartOfDayISOString,
   DAY_MS,
 } from '../utils/date.js'
+import { formatMemberNameList, getAssignedMemberIds } from '../utils/choreAssignments.js'
 
 const VIEWS = [
   { id: 'day', label: 'Day view' },
@@ -204,7 +205,9 @@ export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChor
                 <li key={occurrence.id}>
                   <CalendarDayCard
                     occurrence={occurrence}
-                    member={memberMap.get(occurrence.assignedTo) ?? null}
+                    members={occurrence.assignedMemberIds
+                      .map((id) => memberMap.get(id))
+                      .filter(Boolean)}
                     todayKey={todayKey}
                     onToggle={onToggleChore}
                   />
@@ -256,7 +259,9 @@ export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChor
                       <EventChip
                         key={occurrence.id}
                         occurrence={occurrence}
-                        member={memberMap.get(occurrence.assignedTo) ?? null}
+                        members={occurrence.assignedMemberIds
+                          .map((id) => memberMap.get(id))
+                          .filter(Boolean)}
                       />
                     ))
                   )}
@@ -313,7 +318,9 @@ export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChor
                           <EventChip
                             key={occurrence.id}
                             occurrence={occurrence}
-                            member={memberMap.get(occurrence.assignedTo) ?? null}
+                            members={occurrence.assignedMemberIds
+                              .map((id) => memberMap.get(id))
+                              .filter(Boolean)}
                             compact
                           />
                         ))}
@@ -358,10 +365,13 @@ export function ChoreCalendar({ chores, familyMembers, focusMember, onToggleChor
   )
 }
 
-function CalendarDayCard({ occurrence, member, todayKey, onToggle }) {
+function CalendarDayCard({ occurrence, members = [], todayKey, onToggle }) {
   const isToday = occurrence.dateKey === todayKey
   const isCompleted = occurrence.isCompletedToday && isToday
   const canToggle = typeof onToggle === 'function' && isToday
+  const assignedMembers = Array.isArray(members) ? members.filter(Boolean) : []
+  const names = assignedMembers.map((item) => item.name)
+  const assignmentLabel = names.length ? `Assigned to ${formatMemberNameList(names)}` : 'Unassigned'
 
   const handleToggle = () => {
     if (!canToggle) return
@@ -374,7 +384,7 @@ function CalendarDayCard({ occurrence, member, todayKey, onToggle }) {
         <div>
           <p className="font-semibold text-slate-700 dark:text-slate-100">{occurrence.title}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {member ? `Assigned to ${member.name}` : 'Unassigned'} · {getRecurrenceLabel(occurrence.recurrence)}
+            {assignmentLabel} · {getRecurrenceLabel(occurrence.recurrence)}
           </p>
         </div>
         <span
@@ -413,15 +423,23 @@ function CalendarDayCard({ occurrence, member, todayKey, onToggle }) {
   )
 }
 
-function EventChip({ occurrence, member, compact = false }) {
+function EventChip({ occurrence, members = [], compact = false }) {
   const textClass = compact ? 'text-[0.65rem]' : 'text-xs'
+  const assignedMembers = Array.isArray(members) ? members.filter(Boolean) : []
+  const helperText = assignedMembers.length
+    ? formatMemberNameList(assignedMembers.map((item) => item.name))
+    : null
   return (
     <div
       className={`flex items-center gap-2 rounded-full bg-famboard-primary/10 px-3 py-1 font-medium text-famboard-primary dark:bg-sky-500/10 dark:text-sky-200 ${textClass}`}
       data-rrule={occurrence.icsEvent.recurrenceRule ?? undefined}
     >
       <span className="truncate">{occurrence.title}</span>
-      {member && <span className="hidden truncate text-[0.6rem] text-slate-500 dark:text-slate-300 sm:inline">{member.name}</span>}
+      {helperText && (
+        <span className="hidden truncate text-[0.6rem] text-slate-500 dark:text-slate-300 sm:inline">
+          {helperText}
+        </span>
+      )}
     </div>
   )
 }
@@ -512,10 +530,11 @@ function buildOccurrenceMap(chores, familyMembers, rangeStart, rangeEnd) {
       return
     }
 
+    const baseAssignedIds = getAssignedMemberIds(chore)
     const assignments = chore.rotateAssignment
       ? computeRotationAssignments({
           dates: occurrenceDates,
-          currentAssignedId: chore.assignedTo ?? null,
+          currentAssignedId: baseAssignedIds[0] ?? null,
           rotationOrder,
           anchorDate: anchor,
           recurrence,
@@ -526,8 +545,12 @@ function buildOccurrenceMap(chores, familyMembers, rangeStart, rangeEnd) {
       const key = getDateKey(date)
       const existing = map.get(key)
       if (!existing) return
-      const assignedTo = assignments ? assignments[index] : chore.assignedTo ?? null
-      existing.push(createOccurrence(chore, date, assignedTo))
+      const assignedIds = assignments
+        ? assignments[index]
+          ? [assignments[index]]
+          : []
+        : baseAssignedIds
+      existing.push(createOccurrence(chore, date, assignedIds))
     })
   })
 
@@ -660,9 +683,12 @@ function occursOnDate(anchor, recurrence, date) {
   }
 }
 
-function createOccurrence(chore, date, assignedTo) {
+function createOccurrence(chore, date, assignedMemberIds) {
   const dateKey = getDateKey(date)
   const isToday = isSameDay(date, new Date())
+  const members = Array.isArray(assignedMemberIds)
+    ? assignedMemberIds.filter(Boolean)
+    : getAssignedMemberIds({ assignedTo: assignedMemberIds })
   return {
     id: `${chore.id}-${dateKey}`,
     choreId: chore.id,
@@ -670,7 +696,8 @@ function createOccurrence(chore, date, assignedTo) {
     description: chore.description ?? '',
     date,
     dateKey,
-    assignedTo: assignedTo ?? null,
+    assignedMemberIds: members,
+    assignedTo: members[0] ?? null,
     points: chore.points ?? 0,
     recurrence: chore.recurrence ?? 'none',
     isCompletedToday: Boolean(chore.completed && isToday),
