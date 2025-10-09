@@ -1,6 +1,15 @@
 const DEFAULT_PREVIEW_MAX = 512
 const DEFAULT_ORIGINAL_MAX = 2048
 
+const UNSUPPORTED_IMAGE_TYPES = new Set([
+  'image/heic',
+  'image/heif',
+  'image/heic-sequence',
+  'image/heif-sequence',
+])
+
+const UNSUPPORTED_IMAGE_EXTENSIONS = new Set(['heic', 'heif', 'heics', 'heifs'])
+
 function hasCanvasSupport() {
   if (typeof document === 'undefined') return false
   const canvas = document.createElement('canvas')
@@ -57,9 +66,37 @@ function pickOutputType(file) {
   return 'image/jpeg'
 }
 
+function detectUnsupportedFormat(file) {
+  const type = file?.type?.toLowerCase?.()
+  if (type && UNSUPPORTED_IMAGE_TYPES.has(type)) {
+    return type
+  }
+
+  const name = file?.name || ''
+  const extensionMatch = name.match(/\.([a-z0-9]+)$/i)
+  if (extensionMatch) {
+    const extension = extensionMatch[1]?.toLowerCase?.()
+    if (extension && UNSUPPORTED_IMAGE_EXTENSIONS.has(extension)) {
+      return extension
+    }
+  }
+
+  return null
+}
+
 export async function generateImageVariants(file, options = {}) {
   const previewMax = options.previewMax ?? DEFAULT_PREVIEW_MAX
   const originalMax = options.originalMax ?? DEFAULT_ORIGINAL_MAX
+
+  const unsupportedFormat = detectUnsupportedFormat(file)
+  if (unsupportedFormat) {
+    const error = new Error(
+      'This photo format is not supported yet. Please convert the image to JPEG or PNG and try again.',
+    )
+    error.code = 'unsupported-image-format'
+    error.details = { format: unsupportedFormat }
+    throw error
+  }
 
   if (typeof window === 'undefined') {
     return {
@@ -84,23 +121,13 @@ export async function generateImageVariants(file, options = {}) {
   try {
     bitmap = await loadImageBitmap(file)
   } catch (error) {
-    console.warn('Unable to decode image, falling back to original file', error)
-    return {
-      original: {
-        blob: file,
-        width: 0,
-        height: 0,
-        type: file.type || 'image/jpeg',
-        size: file.size,
-      },
-      preview: {
-        blob: file,
-        width: 0,
-        height: 0,
-        type: file.type || 'image/jpeg',
-        size: file.size,
-      },
-    }
+    console.warn('Unable to decode image file', error)
+    const decodeError = new Error(
+      'We could not read this image. Please try again with a JPEG, PNG, or WebP file.',
+    )
+    decodeError.code = 'image-decode-failed'
+    decodeError.cause = error
+    throw decodeError
   }
 
   const sourceWidth = bitmap.width || bitmap.videoWidth || 0

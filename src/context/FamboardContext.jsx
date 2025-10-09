@@ -31,110 +31,116 @@ const withSchedule = (chore) => {
   }
 }
 
-const defaultData = {
+const defaultFamilyMembers = [
+  {
+    id: 'member-1',
+    name: 'Alex',
+    points: 0,
+    imageId: null,
+    imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=160&q=80',
+  },
+  {
+    id: 'member-2',
+    name: 'Jamie',
+    points: 0,
+    imageId: null,
+    imageUrl: 'https://images.unsplash.com/photo-1520719627573-5e2c1a6610f0?auto=format&fit=crop&w=160&q=80',
+  },
+  {
+    id: 'member-3',
+    name: 'Riley',
+    points: 0,
+    imageId: null,
+    imageUrl: 'https://images.unsplash.com/photo-1445633883498-7f9922d37a3d?auto=format&fit=crop&w=160&q=80',
+  },
+]
+
+const defaultChores = [
+  {
+    id: 'chore-1',
+    title: 'Clear the dinner table',
+    description: 'Tidy up after meals and wipe the table clean.',
+    assignedTo: ['member-1'],
+    points: 10,
+    completed: false,
+    completedAt: null,
+    imageId: null,
+    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
+    recurrence: 'daily',
+    rotateAssignment: false,
+  },
+  {
+    id: 'chore-2',
+    title: 'Feed the pets',
+    description: 'Fresh water and food for the pets before school.',
+    assignedTo: ['member-2'],
+    points: 8,
+    completed: false,
+    completedAt: null,
+    imageId: null,
+    imageUrl: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=200&q=80',
+    recurrence: 'weekdays',
+    rotateAssignment: true,
+  },
+  {
+    id: 'chore-3',
+    title: 'Laundry helper',
+    description: 'Sort colors and help fold clothes.',
+    assignedTo: ['member-3'],
+    points: 12,
+    completed: false,
+    completedAt: null,
+    imageId: null,
+    imageUrl: 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=200&q=80',
+    recurrence: 'weekly',
+    rotateAssignment: false,
+  },
+]
+
+const defaultRewards = [
+  {
+    id: 'reward-1',
+    title: 'Pick the family movie',
+    description: 'Choose the movie for Friday movie night.',
+    cost: 30,
+    imageId: null,
+    imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'reward-2',
+    title: 'Extra 30 minutes of screen time',
+    description: 'Enjoy more tablet or console time.',
+    cost: 45,
+    imageId: null,
+    imageUrl: 'https://images.unsplash.com/photo-1486578077620-8a022ddd481f?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'reward-3',
+    title: 'Choose dinner',
+    description: 'Decide what the family will have for dinner.',
+    cost: 60,
+    imageId: null,
+    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
+  },
+]
+
+const createDefaultData = () => ({
   theme: 'light',
   activeView: 'family',
   pwaInstallOptOut: false,
   mediaLibrary: [],
   settingsPin: null,
-  familyMembers: [
-    {
-      id: 'member-1',
-      name: 'Alex',
-      points: 0,
-      imageId: null,
-      imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=160&q=80',
-    },
-    {
-      id: 'member-2',
-      name: 'Jamie',
-      points: 0,
-      imageId: null,
-      imageUrl: 'https://images.unsplash.com/photo-1520719627573-5e2c1a6610f0?auto=format&fit=crop&w=160&q=80',
-    },
-    {
-      id: 'member-3',
-      name: 'Riley',
-      points: 0,
-      imageId: null,
-      imageUrl: 'https://images.unsplash.com/photo-1445633883498-7f9922d37a3d?auto=format&fit=crop&w=160&q=80',
-    },
-  ],
-  chores: [
-    withSchedule({
-      id: 'chore-1',
-      title: 'Clear the dinner table',
-      description: 'Tidy up after meals and wipe the table clean.',
-      assignedTo: ['member-1'],
-      points: 10,
-      completed: false,
-      completedAt: null,
-      imageId: null,
-      imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
-      recurrence: 'daily',
-      rotateAssignment: false,
-    }),
-    withSchedule({
-      id: 'chore-2',
-      title: 'Feed the pets',
-      description: 'Fresh water and food for the pets before school.',
-      assignedTo: ['member-2'],
-      points: 8,
-      completed: false,
-      completedAt: null,
-      imageId: null,
-      imageUrl: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=200&q=80',
-      recurrence: 'weekdays',
-      rotateAssignment: true,
-    }),
-    withSchedule({
-      id: 'chore-3',
-      title: 'Laundry helper',
-      description: 'Sort colors and help fold clothes.',
-      assignedTo: ['member-3'],
-      points: 12,
-      completed: false,
-      completedAt: null,
-      imageId: null,
-      imageUrl: 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=200&q=80',
-      recurrence: 'weekly',
-      rotateAssignment: false,
-    }),
-  ],
-  rewards: [
-    {
-      id: 'reward-1',
-      title: 'Pick the family movie',
-      description: 'Choose the movie for Friday movie night.',
-      cost: 30,
-      imageId: null,
-      imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      id: 'reward-2',
-      title: 'Extra 30 minutes of screen time',
-      description: 'Enjoy more tablet or console time.',
-      cost: 45,
-      imageId: null,
-      imageUrl: 'https://images.unsplash.com/photo-1486578077620-8a022ddd481f?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      id: 'reward-3',
-      title: 'Choose dinner',
-      description: 'Decide what the family will have for dinner.',
-      cost: 60,
-      imageId: null,
-      imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80',
-    },
-  ],
-}
+  familyMembers: defaultFamilyMembers.map((member) => ({ ...member })),
+  chores: defaultChores.map((chore) => withSchedule(chore)),
+  rewards: defaultRewards.map((reward) => ({ ...reward })),
+})
 
 const FamboardContext = createContext()
 
 const createId = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 9)}`
 
 export function FamboardProvider({ children }) {
-  const [state, setState] = useState(defaultData)
+  const [state, setState] = useState(() => createDefaultData())
   const [isHydrated, setIsHydrated] = useState(false)
 
   const runRecurrenceCheck = useCallback(() => {
@@ -599,14 +605,17 @@ export function FamboardProvider({ children }) {
           settingsPin: null,
         })),
       resetAll: () =>
-        setState((prev) => ({
-          ...defaultData,
-          theme: state.theme,
-          activeView: 'family',
-          mediaLibrary: prev.mediaLibrary,
-          settingsPin: prev.settingsPin,
-          pwaInstallOptOut: prev.pwaInstallOptOut,
-        })),
+        setState((prev) => {
+          const baseDefaults = createDefaultData()
+          return {
+            ...baseDefaults,
+            theme: state.theme,
+            activeView: 'family',
+            mediaLibrary: prev.mediaLibrary,
+            settingsPin: prev.settingsPin,
+            pwaInstallOptOut: prev.pwaInstallOptOut,
+          }
+        }),
     }),
     [state.theme],
   )
