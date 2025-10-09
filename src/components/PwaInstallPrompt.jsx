@@ -14,10 +14,19 @@ const getDisplayModeStandalone = () => {
 
 const isIosSafari = () => {
   if (typeof navigator === 'undefined') return false
+
   const userAgent = navigator.userAgent || ''
-  const isIos = /iphone|ipad|ipod/i.test(userAgent)
-  if (!isIos) return false
-  const isSafari = /safari/i.test(userAgent) && !/crios|fxios|opios|edgios/i.test(userAgent)
+  const platform = navigator.platform || ''
+  const maxTouchPoints = typeof navigator.maxTouchPoints === 'number' ? navigator.maxTouchPoints : 0
+
+  const isiOSLikeDevice = /iphone|ipad|ipod/i.test(userAgent) || (platform === 'MacIntel' && maxTouchPoints > 1)
+  if (!isiOSLikeDevice) return false
+
+  const isSafari =
+    /safari/i.test(userAgent) &&
+    !/crios|fxios|opios|edgios/i.test(userAgent) &&
+    !/android/i.test(userAgent)
+
   return isSafari
 }
 
@@ -49,7 +58,7 @@ export function PwaInstallPrompt() {
   useEffect(() => {
     if (!isHydrated) return undefined
     if (isStandalone) return undefined
-    if (state.pwaInstallDismissedAt) return undefined
+    if (state.pwaInstallOptOut) return undefined
     if (typeof window === 'undefined') return undefined
 
     const timer = window.setTimeout(() => {
@@ -59,7 +68,7 @@ export function PwaInstallPrompt() {
     return () => {
       window.clearTimeout(timer)
     }
-  }, [isHydrated, isStandalone, state.pwaInstallDismissedAt])
+  }, [isHydrated, isStandalone, state.pwaInstallOptOut])
 
   useEffect(() => {
     if (!shouldRender) return undefined
@@ -71,13 +80,18 @@ export function PwaInstallPrompt() {
 
   const message = useMemo(() => (isIosSafari() ? SAFARI_IOS_MESSAGE : DEFAULT_MESSAGE), [])
 
-  const dismiss = () => {
+  const hidePrompt = (persistPreference = false) => {
     setIsVisible(false)
     window.setTimeout(() => {
       setShouldRender(false)
-      dismissPwaInstallPrompt()
+      if (persistPreference) {
+        dismissPwaInstallPrompt()
+      }
     }, 250)
   }
+
+  const dismissForSession = () => hidePrompt(false)
+  const dismissPermanently = () => hidePrompt(true)
 
   if (!shouldRender) {
     return null
@@ -99,14 +113,22 @@ export function PwaInstallPrompt() {
           📲
         </span>
         <p className="flex-1 text-left">{message}</p>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-200/80 text-xs font-semibold text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-famboard-primary focus:ring-offset-1 dark:bg-slate-700/70 dark:text-slate-300 dark:hover:bg-slate-700"
-          aria-label="Dismiss install message"
-        >
-          ×
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={dismissForSession}
+            className="rounded-full bg-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-famboard-primary focus:ring-offset-1 dark:bg-slate-700/70 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Maybe later
+          </button>
+          <button
+            type="button"
+            onClick={dismissPermanently}
+            className="rounded-full bg-famboard-primary/90 px-3 py-1 text-xs font-semibold text-white transition hover:bg-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary focus:ring-offset-1 dark:bg-famboard-accent dark:hover:bg-famboard-accent/90"
+          >
+            Don’t show again
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -34,7 +34,7 @@ const withSchedule = (chore) => {
 const defaultData = {
   theme: 'light',
   activeView: 'family',
-  pwaInstallDismissedAt: null,
+  pwaInstallOptOut: false,
   mediaLibrary: [],
   settingsPin: null,
   familyMembers: [
@@ -195,11 +195,19 @@ export function FamboardProvider({ children }) {
       const stored = window.localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
+        const {
+          chores: storedChores,
+          pwaInstallDismissedAt: _legacyDismissed,
+          pwaInstallOptOut: storedOptOut,
+          ...rest
+        } = parsed ?? {}
+
         setState((current) => ({
           ...current,
-          ...parsed,
-          chores: Array.isArray(parsed?.chores)
-            ? parsed.chores.map((chore) => withSchedule(chore))
+          ...rest,
+          pwaInstallOptOut: typeof storedOptOut === 'boolean' ? storedOptOut : false,
+          chores: Array.isArray(storedChores)
+            ? storedChores.map((chore) => withSchedule(chore))
             : current.chores,
         }))
       }
@@ -247,7 +255,7 @@ export function FamboardProvider({ children }) {
       dismissPwaInstallPrompt: () =>
         setState((prev) => ({
           ...prev,
-          pwaInstallDismissedAt: new Date().toISOString(),
+          pwaInstallOptOut: true,
         })),
       upsertMediaItem: (item) =>
         setState((prev) => {
@@ -597,7 +605,7 @@ export function FamboardProvider({ children }) {
           activeView: 'family',
           mediaLibrary: prev.mediaLibrary,
           settingsPin: prev.settingsPin,
-          pwaInstallDismissedAt: prev.pwaInstallDismissedAt,
+          pwaInstallOptOut: prev.pwaInstallOptOut,
         })),
     }),
     [state.theme],
