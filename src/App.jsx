@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import HomeScreen from './pages/HomeScreen.jsx'
 import ChoresScreen from './pages/ChoresScreen.jsx'
 import RewardsScreen from './pages/RewardsScreen.jsx'
@@ -15,6 +15,8 @@ const navigation = [
   { to: ROUTES.rewards, label: 'Rewards', emoji: '🎁' },
   { to: ROUTES.settings, label: 'Settings', emoji: '⚙️' },
 ]
+
+const memberAllowedRoutes = new Set([ROUTES.chores, ROUTES.rewards])
 
 function ThemeToggle() {
   const { state, setTheme } = useFamboard()
@@ -205,7 +207,25 @@ function UserSwitcher() {
 }
 
 function Layout() {
-  const { isHydrated } = useFamboard()
+  const {
+    state: { activeView },
+    isHydrated,
+  } = useFamboard()
+  const isMemberView = activeView !== 'family'
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const filteredNavigation = useMemo(
+    () => (isMemberView ? navigation.filter((item) => memberAllowedRoutes.has(item.to)) : navigation),
+    [isMemberView],
+  )
+
+  useEffect(() => {
+    if (!isMemberView) return
+    if (memberAllowedRoutes.has(location.pathname)) return
+
+    navigate(ROUTES.chores, { replace: true })
+  }, [isMemberView, location.pathname, navigate])
   const [updateStatus, setUpdateStatus] = useState('hidden')
 
   useEffect(() => {
@@ -247,7 +267,7 @@ function Layout() {
         <UserSwitcher />
         <nav className="mx-auto w-full max-w-6xl px-4 pb-6">
           <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-between">
-            {navigation.map((item) => (
+            {filteredNavigation.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -258,7 +278,7 @@ function Layout() {
                       : 'bg-white/70 text-slate-600 shadow ring-1 ring-white/60 hover:bg-famboard-primary/10 hover:text-famboard-primary dark:bg-slate-900/70 dark:text-slate-300 dark:ring-slate-800'
                   }`
                 }
-                end={item.to === '/'}
+                end={item.to === ROUTES.home}
               >
                 <span className="text-2xl" aria-hidden>
                   {item.emoji}
