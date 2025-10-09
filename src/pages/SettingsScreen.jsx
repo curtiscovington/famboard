@@ -20,6 +20,8 @@ import {
   verifyPin,
 } from '../utils/pin.js'
 import { CHORE_IDEAS, REWARD_IDEAS } from '../data/ideaDecks.js'
+import { formatMemberNameList, getAssignedMemberIds } from '../utils/choreAssignments.js'
+import { ROUTES } from '../constants/routes.js'
 
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
 const PIN_REQUIREMENT_OVERRIDE = import.meta.env.VITE_REQUIRE_SETTINGS_PIN
@@ -315,7 +317,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
   const [form, setForm] = useState({
     title: chore.title,
     description: chore.description,
-    assignedTo: chore.assignedTo ?? '',
+    assignedTo: getAssignedMemberIds(chore),
     points: chore.points,
     imageId: chore.imageId ?? null,
     imageUrl: chore.imageUrl ?? '',
@@ -328,7 +330,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
     setForm({
       title: chore.title,
       description: chore.description,
-      assignedTo: chore.assignedTo ?? '',
+      assignedTo: getAssignedMemberIds(chore),
       points: chore.points,
       imageId: chore.imageId ?? null,
       imageUrl: chore.imageUrl ?? '',
@@ -338,14 +340,19 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
     })
   }, [chore])
 
-  const assignedMember = members.find((member) => member.id === chore.assignedTo)
+  const assignedMembers = getAssignedMemberIds(chore)
+    .map((id) => members.find((member) => member.id === id))
+    .filter(Boolean)
+  const assignedLabel = assignedMembers.length
+    ? formatMemberNameList(assignedMembers.map((member) => member.name))
+    : 'Unassigned'
 
   const handleSubmit = (event) => {
     event.preventDefault()
     onSave(chore.id, {
       title: form.title.trim() || chore.title,
       description: form.description.trim(),
-      assignedTo: form.assignedTo || null,
+      assignedTo: [...form.assignedTo],
       points: Number(form.points) || 0,
       imageId: form.imageId ?? null,
       imageUrl: form.imageUrl.trim(),
@@ -394,23 +401,72 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
+            <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-600 dark:text-slate-300">Assign to</label>
-              <select
-                value={form.assignedTo}
-                onChange={(event) => setForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-                disabled={form.rotateAssignment && members.length <= 1}
-              >
-                <option value="">Unassigned</option>
-                {members.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                  </option>
-                ))}
-              </select>
-              {form.rotateAssignment && (
+              <div className="flex flex-wrap gap-2">
+                {members.length === 0 && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Add family members to assign this chore.
+                  </p>
+                )}
+                {members.map((member) => {
+                  const isChecked = form.assignedTo.includes(member.id)
+                  return (
+                    <label
+                      key={member.id}
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition ${
+                        isChecked
+                          ? 'border-famboard-primary bg-famboard-primary/10 text-famboard-primary dark:border-sky-500 dark:bg-sky-500/10 dark:text-sky-200'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-famboard-primary/40 hover:bg-famboard-primary/5 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-famboard-primary focus:ring-famboard-primary dark:border-slate-600"
+                        checked={isChecked}
+                        onChange={() =>
+                          setForm((prev) => {
+                            const current = new Set(prev.assignedTo)
+                            if (current.has(member.id)) {
+                              current.delete(member.id)
+                            } else {
+                              current.add(member.id)
+                            }
+                            const nextAssigned = Array.from(current)
+                            return {
+                              ...prev,
+                              assignedTo: nextAssigned,
+                              rotateAssignment: nextAssigned.length > 1 ? false : prev.rotateAssignment,
+                            }
+                          })
+                        }
+                      />
+                      <span>{member.name}</span>
+                    </label>
+                  )
+                })}
+                {form.assignedTo.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        assignedTo: [],
+                      }))
+                    }
+                    className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {form.rotateAssignment && form.assignedTo.length <= 1 && (
                 <p className="text-xs text-slate-400 dark:text-slate-500">Assignment rotates automatically.</p>
+              )}
+              {form.assignedTo.length > 1 && (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Rotation is disabled while multiple helpers are selected.
+                </p>
               )}
             </div>
             <div className="space-y-1">
@@ -449,10 +505,13 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
                       ...prev,
                       rotateAssignment: event.target.checked,
                       assignedTo:
-                        event.target.checked && members.length === 0 ? '' : prev.assignedTo,
+                        event.target.checked && prev.assignedTo.length === 0 && members.length > 0
+                          ? [members[0].id]
+                          : prev.assignedTo,
                     }))
                   }
                   className="h-4 w-4 rounded border-slate-300 text-famboard-primary focus:ring-famboard-primary"
+                  disabled={form.assignedTo.length > 1 || members.length <= 1}
                 />
                 <label htmlFor={`admin-rotate-${chore.id}`} className="flex-1 cursor-pointer select-none">
                   Rotate between family members
@@ -460,6 +519,11 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
               </div>
               {form.rotateAssignment && members.length === 0 && (
                 <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
+              )}
+              {form.assignedTo.length > 1 && (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Select one helper to re-enable rotation.
+                </p>
               )}
             </div>
             <div className="space-y-1 sm:col-span-2">
@@ -524,7 +588,7 @@ function ChoreAdminCard({ chore, members, onSave, onRemove }) {
                 </span>
               </div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {assignedMember ? `Assigned to ${assignedMember.name}` : 'Unassigned'}
+                {assignedMembers.length ? `Assigned to ${assignedLabel}` : 'Unassigned'}
               </p>
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span className="rounded-full bg-slate-100 px-3 py-1 font-medium dark:bg-slate-800/60">
@@ -604,7 +668,7 @@ export default function SettingsScreen() {
   const [choreForm, setChoreForm] = useState({
     title: '',
     description: '',
-    assignedTo: '',
+    assignedTo: [],
     points: 10,
     imageId: null,
     imageUrl: '',
@@ -804,16 +868,27 @@ export default function SettingsScreen() {
 
   const handleApplyChoreIdea = (idea) => {
     setCreationTab('chore')
-    setChoreForm((prev) => ({
-      ...prev,
-      title: idea.title,
-      description: idea.description,
-      points: idea.points,
-      imageId: null,
-      imageUrl: idea.imageUrl ?? '',
-      recurrence: idea.recurrence ?? prev.recurrence,
-      rotateAssignment: idea.rotateAssignment ?? prev.rotateAssignment,
-    }))
+    setChoreForm((prev) => {
+      const assigned = Array.isArray(idea.assignedTo)
+        ? idea.assignedTo
+        : idea.assignedTo
+          ? [idea.assignedTo]
+          : []
+      const rotateAssignment =
+        assigned.length > 1 ? false : idea.rotateAssignment ?? prev.rotateAssignment
+
+      return {
+        ...prev,
+        title: idea.title,
+        description: idea.description,
+        points: idea.points,
+        imageId: null,
+        imageUrl: idea.imageUrl ?? '',
+        recurrence: idea.recurrence ?? prev.recurrence,
+        assignedTo: assigned,
+        rotateAssignment,
+      }
+    })
   }
 
   const handleApplyRewardIdea = (idea) => {
@@ -1018,7 +1093,7 @@ export default function SettingsScreen() {
     addChore({
       title: choreForm.title.trim(),
       description: choreForm.description.trim(),
-      assignedTo: choreForm.assignedTo || null,
+      assignedTo: [...choreForm.assignedTo],
       points: Number(choreForm.points) || 0,
       imageId: choreForm.imageId ?? null,
       imageUrl: choreForm.imageUrl.trim(),
@@ -1032,7 +1107,7 @@ export default function SettingsScreen() {
     setChoreForm({
       title: '',
       description: '',
-      assignedTo: '',
+      assignedTo: [],
       points: 10,
       imageId: null,
       imageUrl: '',
@@ -1071,7 +1146,7 @@ export default function SettingsScreen() {
                 {theme === 'dark' ? 'Switch to light mode ☀️' : 'Switch to dark mode 🌙'}
               </button>
               <Link
-                to="/rewards"
+                to={ROUTES.rewards}
                 className="inline-flex items-center justify-center rounded-full border border-white/70 px-5 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
               >
                 Preview rewards
@@ -1370,21 +1445,70 @@ export default function SettingsScreen() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-600 dark:text-slate-200">Assign to</label>
-                    <select
-                      value={choreForm.assignedTo}
-                      onChange={(event) => setChoreForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base shadow-inner focus:border-famboard-primary focus:outline-none focus:ring-2 focus:ring-famboard-primary/30 dark:border-slate-700 dark:bg-slate-900"
-                      disabled={choreForm.rotateAssignment && familyMembers.length <= 1}
-                    >
-                      <option value="">Unassigned</option>
-                      {familyMembers.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.name}
-                        </option>
-                      ))}
-                    </select>
-                    {choreForm.rotateAssignment && (
+                    <div className="flex flex-wrap gap-2">
+                      {familyMembers.length === 0 && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Add family members to assign this chore.
+                        </p>
+                      )}
+                      {familyMembers.map((member) => {
+                        const isChecked = choreForm.assignedTo.includes(member.id)
+                        return (
+                          <label
+                            key={member.id}
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition ${
+                              isChecked
+                                ? 'border-famboard-primary bg-famboard-primary/10 text-famboard-primary dark:border-sky-500 dark:bg-sky-500/10 dark:text-sky-200'
+                                : 'border-slate-200 bg-white text-slate-600 hover:border-famboard-primary/40 hover:bg-famboard-primary/5 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-slate-300 text-famboard-primary focus:ring-famboard-primary dark:border-slate-600"
+                              checked={isChecked}
+                              onChange={() =>
+                                setChoreForm((prev) => {
+                                  const current = new Set(prev.assignedTo)
+                                  if (current.has(member.id)) {
+                                    current.delete(member.id)
+                                  } else {
+                                    current.add(member.id)
+                                  }
+                                  const nextAssigned = Array.from(current)
+                                  return {
+                                    ...prev,
+                                    assignedTo: nextAssigned,
+                                    rotateAssignment: nextAssigned.length > 1 ? false : prev.rotateAssignment,
+                                  }
+                                })
+                              }
+                            />
+                            <span>{member.name}</span>
+                          </label>
+                        )
+                      })}
+                      {choreForm.assignedTo.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setChoreForm((prev) => ({
+                              ...prev,
+                              assignedTo: [],
+                            }))
+                          }
+                          className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    {choreForm.rotateAssignment && choreForm.assignedTo.length <= 1 && (
                       <p className="text-xs text-slate-400 dark:text-slate-500">Assignment rotates automatically.</p>
+                    )}
+                    {choreForm.assignedTo.length > 1 && (
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        Rotation is disabled while multiple helpers are selected.
+                      </p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -1423,10 +1547,13 @@ export default function SettingsScreen() {
                             ...prev,
                             rotateAssignment: event.target.checked,
                             assignedTo:
-                              event.target.checked && familyMembers.length === 0 ? '' : prev.assignedTo,
+                              event.target.checked && prev.assignedTo.length === 0 && familyMembers.length > 0
+                                ? [familyMembers[0].id]
+                                : prev.assignedTo,
                           }))
                         }
                         className="h-4 w-4 rounded border-slate-300 text-famboard-primary focus:ring-famboard-primary"
+                        disabled={choreForm.assignedTo.length > 1 || familyMembers.length <= 1}
                       />
                       <label htmlFor="create-rotate" className="flex-1 cursor-pointer select-none">
                         Rotate between family members
@@ -1434,6 +1561,11 @@ export default function SettingsScreen() {
                     </div>
                     {choreForm.rotateAssignment && familyMembers.length === 0 && (
                       <p className="text-xs text-rose-500">Add family members to enable rotation.</p>
+                    )}
+                    {choreForm.assignedTo.length > 1 && (
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        Select one helper to re-enable rotation.
+                      </p>
                     )}
                   </div>
                   <div className="space-y-2 md:col-span-2">

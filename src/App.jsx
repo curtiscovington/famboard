@@ -6,12 +6,14 @@ import RewardsScreen from './pages/RewardsScreen.jsx'
 import SettingsScreen from './pages/SettingsScreen.jsx'
 import { MediaImage } from './components/MediaImage.jsx'
 import { useFamboard } from './context/FamboardContext.jsx'
+import { isMemberAssignedToChore } from './utils/choreAssignments.js'
+import { ROUTES } from './constants/routes.js'
 
 const navigation = [
-  { to: '/', label: 'Home', emoji: '🏡' },
-  { to: '/chores', label: 'Chores', emoji: '🧹' },
-  { to: '/rewards', label: 'Rewards', emoji: '🎁' },
-  { to: '/settings', label: 'Settings', emoji: '⚙️' },
+  { to: ROUTES.home, label: 'Home', emoji: '🏡' },
+  { to: ROUTES.chores, label: 'Chores', emoji: '🧹' },
+  { to: ROUTES.rewards, label: 'Rewards', emoji: '🎁' },
+  { to: ROUTES.settings, label: 'Settings', emoji: '⚙️' },
 ]
 
 function ThemeToggle() {
@@ -43,7 +45,7 @@ function UserSwitcher() {
   )
 
   const getMemberChoreCount = (memberId) =>
-    chores.filter((chore) => !chore.completed && chore.assignedTo === memberId).length
+    chores.filter((chore) => !chore.completed && isMemberAssignedToChore(chore, memberId)).length
 
   const activeMemberOpenChores = activeMember ? getMemberChoreCount(activeMember.id) : 0
 
@@ -311,7 +313,7 @@ export default function App() {
         <Route path="rewards" element={<RewardsScreen />} />
         <Route path="settings" element={<SettingsScreen />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
     </Routes>
   )
 }

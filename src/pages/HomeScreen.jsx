@@ -3,6 +3,12 @@ import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
 import { MediaImage } from '../components/MediaImage.jsx'
 import { launchConfetti } from '../utils/confetti.js'
+import { ROUTES } from '../constants/routes.js'
+import {
+  formatMemberNameList,
+  getAssignedMemberIds,
+  isMemberAssignedToChore,
+} from '../utils/choreAssignments.js'
 
 export default function HomeScreen() {
   const { state, toggleChoreComplete } = useFamboard()
@@ -14,13 +20,13 @@ export default function HomeScreen() {
   const upcomingChores = useMemo(() => {
     return chores
       .filter((chore) => !chore.completed)
-      .filter((chore) => (isMemberView ? chore.assignedTo === selectedMember.id : true))
+      .filter((chore) => (isMemberView ? isMemberAssignedToChore(chore, selectedMember.id) : true))
   }, [chores, isMemberView, selectedMember?.id])
 
   const completedChores = useMemo(() => {
     return chores
       .filter((chore) => chore.completed)
-      .filter((chore) => (isMemberView ? chore.assignedTo === selectedMember.id : true))
+      .filter((chore) => (isMemberView ? isMemberAssignedToChore(chore, selectedMember.id) : true))
       .sort((a, b) => {
         if (!a.completedAt) return 1
         if (!b.completedAt) return -1
@@ -50,6 +56,35 @@ export default function HomeScreen() {
   const otherMembers = isMemberView
     ? familyMembers.filter((member) => member.id !== selectedMember.id)
     : familyMembers
+
+  const resolveAssignedMembers = (chore) =>
+    getAssignedMemberIds(chore)
+      .map((id) => familyMembers.find((member) => member.id === id))
+      .filter(Boolean)
+
+  const buildAssignmentLabel = (chore, verb, preposition) => {
+    const members = resolveAssignedMembers(chore)
+    if (members.length === 0) {
+      return 'Unassigned'
+    }
+    const names = members.map((member) => member.name)
+    if (isMemberView && selectedMember) {
+      const includesSelected = members.some((member) => member.id === selectedMember.id)
+      if (includesSelected) {
+        const others = members
+          .filter((member) => member.id !== selectedMember.id)
+          .map((member) => member.name)
+        if (others.length === 0) {
+          return `${verb} ${preposition} you`
+        }
+        if (others.length === 1) {
+          return `${verb} ${preposition} you & ${others[0]}`
+        }
+        return `${verb} ${preposition} you, ${formatMemberNameList(others)}`
+      }
+    }
+    return `${verb} ${preposition} ${formatMemberNameList(names)}`
+  }
 
   const handleToggleChore = (chore) => {
     toggleChoreComplete(chore.id)
@@ -88,13 +123,13 @@ export default function HomeScreen() {
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
-                    to="/chores"
+                    to={ROUTES.chores}
                     className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-famboard-primary shadow-lg transition hover:-translate-y-0.5 hover:bg-famboard-accent hover:text-famboard-dark"
                   >
                     View your chores
                   </Link>
                   <Link
-                    to="/rewards"
+                    to={ROUTES.rewards}
                     className="inline-flex items-center justify-center rounded-full border border-white/70 px-5 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
                   >
                     Explore rewards
@@ -130,13 +165,13 @@ export default function HomeScreen() {
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
-                  to="/chores"
+                  to={ROUTES.chores}
                   className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-famboard-primary shadow-lg transition hover:-translate-y-0.5 hover:bg-famboard-accent hover:text-famboard-dark"
                 >
                   View chore board
                 </Link>
                 <Link
-                  to="/rewards"
+                  to={ROUTES.rewards}
                   className="inline-flex items-center justify-center rounded-full border border-white/70 px-5 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
                 >
                   Browse rewards
@@ -296,7 +331,7 @@ export default function HomeScreen() {
               </p>
             )}
             {upcomingChores.map((chore) => {
-              const assigned = familyMembers.find((member) => member.id === chore.assignedTo)
+              const assignmentLabel = buildAssignmentLabel(chore, 'Assigned', 'to')
               return (
                 <div
                   key={chore.id}
@@ -320,12 +355,7 @@ export default function HomeScreen() {
                     <p className="font-semibold text-slate-800 dark:text-white">{chore.title}</p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">{chore.description}</p>
                     <p className="pt-1 text-xs font-medium uppercase tracking-wide text-slate-400">
-                      {assigned
-                        ? isMemberView
-                          ? 'Assigned to you'
-                          : `Assigned to ${assigned.name}`
-                        : 'Unassigned'}{' '}
-                      · {chore.points} pts
+                      {assignmentLabel} · {chore.points} pts
                     </p>
                   </div>
                   <button
@@ -358,7 +388,7 @@ export default function HomeScreen() {
               </p>
             )}
             {completedChores.map((chore) => {
-              const assigned = familyMembers.find((member) => member.id === chore.assignedTo)
+              const assignmentLabel = buildAssignmentLabel(chore, 'Completed', 'by')
               return (
                 <div
                   key={chore.id}
@@ -382,12 +412,7 @@ export default function HomeScreen() {
                     <p className="font-semibold text-emerald-700 dark:text-emerald-200">{chore.title}</p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">{chore.description}</p>
                     <p className="pt-1 text-xs font-medium uppercase tracking-wide text-slate-400">
-                      {assigned
-                        ? isMemberView
-                          ? 'Completed by you'
-                          : `By ${assigned.name}`
-                        : 'Unassigned'}{' '}
-                      · {chore.points} pts
+                      {assignmentLabel} · {chore.points} pts
                     </p>
                   </div>
                   <button

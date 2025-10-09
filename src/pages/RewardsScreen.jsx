@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useFamboard } from '../context/FamboardContext.jsx'
 import { MediaPicker } from '../components/MediaPicker.jsx'
 import { MediaImage } from '../components/MediaImage.jsx'
+import { ROUTES } from '../constants/routes.js'
 
 function RewardCard({ reward, members, onRedeem, onDelete, onSave, canManage = true }) {
   const [selectedMember, setSelectedMember] = useState(members[0]?.id ?? '')
@@ -353,7 +354,7 @@ export default function RewardsScreen() {
           </div>
           {isMemberView ? (
             <Link
-              to="/chores"
+              to={ROUTES.chores}
               className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-famboard-primary shadow-lg transition hover:-translate-y-0.5 hover:bg-famboard-accent hover:text-famboard-dark"
             >
               Earn more points on the chore board
@@ -372,7 +373,7 @@ export default function RewardsScreen() {
                 )}
               </div>
               <Link
-                to="/settings"
+                to={ROUTES.settings}
                 className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-famboard-primary shadow-lg transition hover:-translate-y-0.5 hover:bg-famboard-accent hover:text-famboard-dark"
               >
                 Manage rewards in settings
@@ -396,7 +397,7 @@ export default function RewardsScreen() {
           </div>
           {!isMemberView && (
             <Link
-              to="/settings"
+              to={ROUTES.settings}
               className="inline-flex items-center justify-center rounded-full border border-famboard-primary/60 px-4 py-2 text-sm font-semibold text-famboard-primary transition hover:bg-famboard-primary hover:text-white"
             >
               Manage rewards in settings

@@ -6,9 +6,21 @@ import { ChoreCalendar } from '../components/ChoreCalendar.jsx'
 import { launchConfetti } from '../utils/confetti.js'
 import { getRecurrenceLabel } from '../utils/recurrence.js'
 import { formatDateLabel } from '../utils/date.js'
+import { ROUTES } from '../constants/routes.js'
+import {
+  formatMemberNameList,
+  getAssignedMemberIds,
+  isMemberAssignedToChore,
+} from '../utils/choreAssignments.js'
 
 function ChoreCard({ chore, familyMembers, onToggle }) {
-  const assignedMember = familyMembers.find((member) => member.id === chore.assignedTo)
+  const assignedMembers = getAssignedMemberIds(chore)
+    .map((id) => familyMembers.find((member) => member.id === id))
+    .filter(Boolean)
+  const assignedNames = assignedMembers.map((member) => member.name)
+  const assignmentLabel = assignedNames.length
+    ? `Assigned to ${formatMemberNameList(assignedNames)}`
+    : 'Unassigned'
 
   const handleToggle = () => {
     onToggle(chore.id, chore.completed)
@@ -49,7 +61,7 @@ function ChoreCard({ chore, familyMembers, onToggle }) {
           </div>
         </div>
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          {assignedMember ? `Assigned to ${assignedMember.name}` : 'Unassigned'}
+          {assignmentLabel}
         </p>
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span className="rounded-full bg-slate-100 px-3 py-1 font-medium dark:bg-slate-800/60">
@@ -90,18 +102,18 @@ export default function ChoresScreen() {
 
   const upcomingChores = useMemo(() => {
     return chores.filter(
-      (chore) => !chore.completed && (!isMemberView || chore.assignedTo === selectedMember.id),
+      (chore) => !chore.completed && (!isMemberView || isMemberAssignedToChore(chore, selectedMember.id)),
     )
   }, [chores, isMemberView, selectedMember?.id])
 
   const completedChores = useMemo(() => {
     return chores.filter(
-      (chore) => chore.completed && (!isMemberView || chore.assignedTo === selectedMember.id),
+      (chore) => chore.completed && (!isMemberView || isMemberAssignedToChore(chore, selectedMember.id)),
     )
   }, [chores, isMemberView, selectedMember?.id])
 
   const visibleChores = useMemo(() => {
-    return chores.filter((chore) => !isMemberView || chore.assignedTo === selectedMember.id)
+    return chores.filter((chore) => !isMemberView || isMemberAssignedToChore(chore, selectedMember.id))
   }, [chores, isMemberView, selectedMember?.id])
 
   const totalPointsInRewards = useMemo(
@@ -136,13 +148,13 @@ export default function ChoresScreen() {
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
-                to="/rewards"
+                to={ROUTES.rewards}
                 className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-famboard-primary shadow-lg transition hover:-translate-y-0.5 hover:bg-famboard-accent hover:text-famboard-dark"
               >
                 {isMemberView ? 'Check rewards you can claim' : 'Plan reward payouts'}
               </Link>
               <Link
-                to="/settings"
+                to={ROUTES.settings}
                 className="inline-flex items-center justify-center rounded-full border border-white/70 px-5 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
               >
                 Manage chores in settings
@@ -194,7 +206,7 @@ export default function ChoresScreen() {
             </p>
           </div>
           <Link
-            to="/settings"
+            to={ROUTES.settings}
             className="inline-flex items-center justify-center rounded-full bg-famboard-primary px-5 py-2 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-famboard-dark focus:outline-none focus:ring-2 focus:ring-famboard-accent focus:ring-offset-2"
           >
             Go to admin settings
